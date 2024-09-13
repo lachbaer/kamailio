@@ -31,6 +31,7 @@
 
 #define SIZE_CONF_ID 16
 #define P_CHARGING_VECTOR "P-Charging-Vector"
+#define P_CHARGING_VECTOR_PREFIX_LEN 19
 #define LOOPBACK_IP 16777343
 
 #define PCV_BUF_SIZE 256
@@ -361,11 +362,22 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 	if(replace_pcv
 			|| (generate_pcv && _siputils_pcv_status != PCV_GENERATED
 					&& _siputils_pcv_status != PCV_PARSED)) {
+		memset(_siputils_pcv_buf, 0, PCV_BUF_SIZE);
+		_siputils_pcv.len = 0;
+
 		strcpy(_siputils_pcv_buf, P_CHARGING_VECTOR);
 		strcat(_siputils_pcv_buf, ": ");
 
-		char *pcv_body = _siputils_pcv_buf + 19;
+		/* we need to reparse headers after deleting for msg->eoh to be correct */
+		if(replace_pcv && parse_headers(msg, HDR_EOH_F, 0) < 0) {
+			LM_ERR("error parsing headers\n");
+			return -1;
+		}
+
+		char *pcv_body = _siputils_pcv_buf + P_CHARGING_VECTOR_PREFIX_LEN;
 		char pcv_value[40];
+
+		memset(pcv_value, 0, sizeof(pcv_value));
 
 		/* We use the IP address of the interface that received the message as generated-at */
 		if(msg->rcv.bind_address == NULL
@@ -377,16 +389,16 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 
 		sip_generate_charging_vector(pcv_value);
 
-		_siputils_pcv.len = snprintf(pcv_body, PCV_BUF_SIZE - 19,
+		_siputils_pcv.len = snprintf(pcv_body, PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN,
 				"icid-value=%.*s; icid-generated-at=%.*s\r\n", 32, pcv_value,
 				msg->rcv.bind_address->address_str.len,
 				msg->rcv.bind_address->address_str.s);
-		_siputils_pcv.len += 19;
+		_siputils_pcv.len += P_CHARGING_VECTOR_PREFIX_LEN;
 
 		_siputils_pcv_status = PCV_GENERATED;
 
 		/* if generated, reparse it */
-		sip_parse_charging_vector(pcv_body, _siputils_pcv.len - 19);
+		sip_parse_charging_vector(pcv_body, _siputils_pcv.len - P_CHARGING_VECTOR_PREFIX_LEN - 2);
 		/* if it was generated, we need to send it out as a header */
 		LM_INFO("Generated PCV header %.*s\n", _siputils_pcv.len - 2,
 				_siputils_pcv_buf);
