@@ -245,6 +245,7 @@ static int sip_get_charging_vector(
 					_siputils_pcv.s = hf->body.s;
 					_siputils_pcv.len = hf->body.len;
 				}
+				*hf_pcv = hf;
 				return 2;
 			} else {
 				_siputils_pcv_id.s = 0;
@@ -253,7 +254,6 @@ static int sip_get_charging_vector(
 				_siputils_pcv_host.len = 0;
 				LM_WARN("P-Charging-Vector header found but no value.\n");
 			}
-			*hf_pcv = hf;
 		}
 	}
 	LM_DBG("No valid P-Charging-Vector header found.\n");
