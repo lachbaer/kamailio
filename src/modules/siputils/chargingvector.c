@@ -310,7 +310,7 @@ static int sip_add_charging_vector(struct sip_msg *msg, struct lump *anchor)
 	}
 	memcpy(s, _siputils_pcv.s, _siputils_pcv.len);
 
-	LM_INFO("Adding PCV line '%.*s' with length %d at offset %d\n", PCV_BUF_SIZE, _siputils_pcv.len, anchor->u.offset);
+	LM_INFO("Adding PCV line '%.*s' with length %d at offset %d\n", PCV_BUF_SIZE, s, _siputils_pcv.len, anchor->u.offset);
 	if(insert_new_lump_after(anchor, s, _siputils_pcv.len, 0) == 0) {
 		LM_ERR("can't insert lump\n");
 		pkg_free(s);
