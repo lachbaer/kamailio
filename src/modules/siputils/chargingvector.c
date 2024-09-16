@@ -265,6 +265,11 @@ static int sip_remove_charging_vector(struct sip_msg *msg, struct hdr_field *hf,
 {
 	struct lump *l;
 
+	if(parse_headers(msg, HDR_EOH_F, 0) == -1) {
+		LM_ERR("error while parsing message\n");
+		return -1;
+	}
+
 	if(hf != NULL) {
 		l = del_lump(msg, hf->name.s - msg->buf, hf->len, 0);
 		if(l == 0) {
@@ -284,6 +289,11 @@ static int sip_add_charging_vector(struct sip_msg *msg, struct lump *anchor)
 {
 	char *s;
 
+	if(parse_headers(msg, HDR_EOH_F, 0) == -1) {
+		LM_ERR("error while parsing message\n");
+		return -1;
+	}
+	
 	if (anchor == NULL) {
 		anchor = anchor_lump(msg, msg->unparsed - msg->buf, 0, 0);
 		if(anchor == 0) {
