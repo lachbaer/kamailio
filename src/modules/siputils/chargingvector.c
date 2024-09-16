@@ -397,7 +397,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		LM_INFO("3. Empty new PCV header %.*s\n", PCV_BUF_SIZE,
 				generated_pcv.s);
 
-		body_len = (pcv_body, PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN,
+		body_len = snprintf(pcv_body, PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN,
 				"icid-value=%.*s; icid-generated-at=%.*s\r\n", 32, pcv_value,
 				msg->rcv.bind_address->address_str.len,
 				msg->rcv.bind_address->address_str.s);
