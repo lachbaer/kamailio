@@ -631,7 +631,7 @@ static inline int lumps_len(
 			};                                                               \
 			break;                                                           \
 		case SUBST_RCV_PORT:                                                 \
-			if(msg->rcv.bind_address && STR_WITHVAL(recv_port_str)) {        \
+			if(STR_WITHVAL(recv_port_str)) {                                 \
 				new_len += recv_port_str->len;                               \
 			} else {                                                         \
 				LM_CRIT(" rcv port - null bind_address\n");                  \
@@ -728,10 +728,10 @@ static inline int lumps_len(
 			};                                                               \
 			break;                                                           \
 		case SUBST_SND_PORT:                                                 \
-			if(send_sock) {                                                  \
+			if(send_port_str != NULL) {                                      \
 				new_len += send_port_str->len;                               \
 			} else {                                                         \
-				LM_CRIT("null send_sock\n");                                 \
+				LM_CRIT("null send sock port\n");                            \
 			};                                                               \
 			break;                                                           \
 		case SUBST_SND_PROTO:                                                \
@@ -772,8 +772,7 @@ static inline int lumps_len(
 									send_address_str->len)                   \
 								!= NULL))                                    \
 					new_len += 2;                                            \
-				if((send_sock->port_no != SIP_PORT)                          \
-						|| (send_port_str != &(send_sock->port_no_str))) {   \
+				if(send_port_str != NULL) {                                  \
 					/* add :port_no */                                       \
 					new_len += 1 + send_port_str->len;                       \
 				}                                                            \
@@ -839,12 +838,17 @@ static inline int lumps_len(
 		send_address_str = &(send_sock->address_str);
 		send_af = send_sock->address.af;
 	}
-	if(send_sock && send_sock->useinfo.port_no > 0)
-		send_port_str = &(send_sock->useinfo.port_no_str);
-	else if(msg->set_global_port.len)
+	if(send_sock && send_sock->useinfo.name.len > 0) {
+		if(send_sock->useinfo.port_no > 0) {
+			send_port_str = &(send_sock->useinfo.port_no_str);
+		}
+	} else if(msg->set_global_port.len) {
 		send_port_str = &(msg->set_global_port);
-	else
-		send_port_str = &(send_sock->port_no_str);
+	} else if(send_sock) {
+		if(send_sock->port_no != SIP_PORT) {
+			send_port_str = &(send_sock->port_no_str);
+		}
+	}
 	if(send_sock) {
 		if(send_sock->useinfo.proto != PROTO_NONE)
 			send_proto_id = send_sock->useinfo.proto;
@@ -860,9 +864,11 @@ static inline int lumps_len(
 			recv_address_str = &(msg->rcv.bind_address->address_str);
 			recv_af = msg->rcv.bind_address->address.af;
 		}
-		if(msg->rcv.bind_address->useinfo.port_no > 0) {
-			recv_port_str = &(msg->rcv.bind_address->useinfo.port_no_str);
-			recv_port_no = msg->rcv.bind_address->useinfo.port_no;
+		if(msg->rcv.bind_address->useinfo.name.len > 0) {
+			if(msg->rcv.bind_address->useinfo.port_no > 0) {
+				recv_port_str = &(msg->rcv.bind_address->useinfo.port_no_str);
+				recv_port_no = msg->rcv.bind_address->useinfo.port_no;
+			}
 		} else {
 			recv_port_str = &(msg->rcv.bind_address->port_no_str);
 			recv_port_no = msg->rcv.bind_address->port_no;
@@ -1051,7 +1057,7 @@ void process_lumps(struct sip_msg *msg, struct lump *lumps, char *new_buf,
 			};                                                                 \
 			break;                                                             \
 		case SUBST_RCV_PORT:                                                   \
-			if(msg->rcv.bind_address && STR_WITHVAL(recv_port_str)) {          \
+			if(STR_WITHVAL(recv_port_str)) {                                   \
 				memcpy(new_buf + offset, recv_port_str->s,                     \
 						recv_port_str->len);                                   \
 				offset += recv_port_str->len;                                  \
@@ -1169,12 +1175,12 @@ void process_lumps(struct sip_msg *msg, struct lump *lumps, char *new_buf,
 			};                                                                 \
 			break;                                                             \
 		case SUBST_SND_PORT:                                                   \
-			if(send_sock) {                                                    \
+			if(send_port_str != NULL) {                                        \
 				memcpy(new_buf + offset, send_port_str->s,                     \
 						send_port_str->len);                                   \
 				offset += send_port_str->len;                                  \
 			} else {                                                           \
-				LM_CRIT("null send_sock\n");                                   \
+				LM_CRIT("null send sock port\n");                              \
 			};                                                                 \
 			break;                                                             \
 		case SUBST_SND_ALL:                                                    \
@@ -1199,8 +1205,7 @@ void process_lumps(struct sip_msg *msg, struct lump *lumps, char *new_buf,
 					offset++;                                                  \
 				}                                                              \
 				/* :port */                                                    \
-				if((send_sock->port_no != SIP_PORT)                            \
-						|| (send_port_str != &(send_sock->port_no_str))) {     \
+				if(send_port_str != NULL) {                                    \
 					new_buf[offset] = ':';                                     \
 					offset++;                                                  \
 					memcpy(new_buf + offset, send_port_str->s,                 \
@@ -1367,12 +1372,17 @@ void process_lumps(struct sip_msg *msg, struct lump *lumps, char *new_buf,
 		send_address_str = &(send_sock->address_str);
 		send_af = send_sock->address.af;
 	}
-	if(send_sock && send_sock->useinfo.port_no > 0)
-		send_port_str = &(send_sock->useinfo.port_no_str);
-	else if(msg->set_global_port.len)
+	if(send_sock && send_sock->useinfo.name.len > 0) {
+		if(send_sock->useinfo.port_no > 0) {
+			send_port_str = &(send_sock->useinfo.port_no_str);
+		}
+	} else if(msg->set_global_port.len) {
 		send_port_str = &(msg->set_global_port);
-	else
-		send_port_str = &(send_sock->port_no_str);
+	} else if(send_sock) {
+		if(send_sock->port_no != SIP_PORT) {
+			send_port_str = &(send_sock->port_no_str);
+		}
+	}
 	if(send_sock) {
 		if(send_sock->useinfo.proto != PROTO_NONE)
 			send_proto_id = send_sock->useinfo.proto;
@@ -1388,9 +1398,11 @@ void process_lumps(struct sip_msg *msg, struct lump *lumps, char *new_buf,
 			recv_address_str = &(msg->rcv.bind_address->address_str);
 			recv_af = msg->rcv.bind_address->address.af;
 		}
-		if(msg->rcv.bind_address->useinfo.port_no > 0) {
-			recv_port_str = &(msg->rcv.bind_address->useinfo.port_no_str);
-			recv_port_no = msg->rcv.bind_address->useinfo.port_no;
+		if(msg->rcv.bind_address->useinfo.name.len > 0) {
+			if(msg->rcv.bind_address->useinfo.port_no > 0) {
+				recv_port_str = &(msg->rcv.bind_address->useinfo.port_no_str);
+				recv_port_no = msg->rcv.bind_address->useinfo.port_no;
+			}
 		} else {
 			recv_port_str = &(msg->rcv.bind_address->port_no_str);
 			recv_port_no = msg->rcv.bind_address->port_no;

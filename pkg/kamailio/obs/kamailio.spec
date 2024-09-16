@@ -1325,7 +1325,7 @@ make install-modules-all skip_modules="app_mono db_cassandra db_oracle \
     FREERADIUS=1 \
 %endif
 %if 0%{?rhel} >= 8
-    PYTHON3=python3.9 \
+    PYTHON3=python3.12 \
 %endif
     WOLFSSL_INTERNAL=no \
     group_include="kstandard kautheph kberkeley kcarrierroute \
@@ -1980,6 +1980,7 @@ fi
 %doc %{_docdir}/kamailio/modules/README.ims_isc
 %doc %{_docdir}/kamailio/modules/README.ims_ocs
 %doc %{_docdir}/kamailio/modules/README.ims_qos
+%doc %{_docdir}/kamailio/modules/README.ims_qos_npn
 %doc %{_docdir}/kamailio/modules/README.ims_registrar_pcscf
 %doc %{_docdir}/kamailio/modules/README.ims_registrar_scscf
 %doc %{_docdir}/kamailio/modules/README.ims_usrloc_pcscf
@@ -1995,6 +1996,7 @@ fi
 %{_libdir}/kamailio/modules/ims_isc.so
 %{_libdir}/kamailio/modules/ims_ocs.so
 %{_libdir}/kamailio/modules/ims_qos.so
+%{_libdir}/kamailio/modules/ims_qos_npn.so
 %{_libdir}/kamailio/modules/ims_registrar_pcscf.so
 %{_libdir}/kamailio/modules/ims_registrar_scscf.so
 %{_libdir}/kamailio/modules/ims_usrloc_pcscf.so
