@@ -265,11 +265,6 @@ static int sip_remove_charging_vector(struct sip_msg *msg, struct hdr_field *hf,
 {
 	struct lump *l;
 
-	if(parse_headers(msg, HDR_EOH_F, 0) == -1) {
-		LM_ERR("error while parsing message\n");
-		return -1;
-	}
-
 	if(hf != NULL) {
 		l = del_lump(msg, hf->name.s - msg->buf, hf->len, 0);
 		LM_INFO("Deleted PCV line with length %d at offset %d\n", l->len, l->u.offset);
@@ -289,11 +284,6 @@ static int sip_remove_charging_vector(struct sip_msg *msg, struct hdr_field *hf,
 static int sip_add_charging_vector(struct sip_msg *msg, struct lump *anchor)
 {
 	char *s;
-
-	if(parse_headers(msg, HDR_EOH_F, 0) == -1) {
-		LM_ERR("error while parsing message\n");
-		return -1;
-	}
 
 	if (anchor == NULL) {
 		anchor = anchor_lump(msg, msg->unparsed - msg->buf, 0, 0);
@@ -386,10 +376,15 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		strcpy(_siputils_pcv_buf, P_CHARGING_VECTOR);
 		strcat(_siputils_pcv_buf, ": ");
 
+		LM_INFO("Empty new PCV header %.*s\n", PCV_BUF_SIZE,
+				_siputils_pcv.s);
+
 		char *pcv_body = _siputils_pcv_buf + P_CHARGING_VECTOR_PREFIX_LEN;
 		char pcv_value[40];
 
 		memset(pcv_value, 0, sizeof(pcv_value));
+		LM_INFO("2. Empty new PCV header %.*s\n", PCV_BUF_SIZE,
+				_siputils_pcv.s);
 
 		/* We use the IP address of the interface that received the message as generated-at */
 		if(msg->rcv.bind_address == NULL
@@ -400,6 +395,8 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		}
 
 		sip_generate_charging_vector(pcv_value);
+		LM_INFO("3. Empty new PCV header %.*s\n", PCV_BUF_SIZE,
+				_siputils_pcv.s);
 
 		_siputils_pcv.len = snprintf(pcv_body, PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN,
 				"icid-value=%.*s; icid-generated-at=%.*s\r\n", 32, pcv_value,
@@ -408,6 +405,8 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		_siputils_pcv.len += P_CHARGING_VECTOR_PREFIX_LEN;
 
 		_siputils_pcv_status = PCV_GENERATED;
+		LM_INFO("4. Empty new PCV header %.*s\n", PCV_BUF_SIZE,
+				_siputils_pcv.s);
 
 		/* if generated, reparse it */
 		sip_parse_charging_vector(pcv_body, _siputils_pcv.len - P_CHARGING_VECTOR_PREFIX_LEN - CRLF_LEN);
