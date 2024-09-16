@@ -145,7 +145,7 @@ static unsigned int sip_param_end(const char *s, unsigned int len)
 static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 {
 	/* now point to each PCV component */
-	LM_DBG("parsing PCV header [%s]\n", pcv_value);
+	LM_DBG("parsing PCV header [%.*s]\n", len, pcv_value);
 
 	char *s = NULL;
 
@@ -272,6 +272,7 @@ static int sip_remove_charging_vector(struct sip_msg *msg, struct hdr_field *hf,
 
 	if(hf != NULL) {
 		l = del_lump(msg, hf->name.s - msg->buf, hf->len, 0);
+		LM_INFO("Deleted PCV line with length %d at offset %d\n", l->len, l->u.offset);
 		if(l == 0) {
 			LM_ERR("no memory\n");
 			return -1;
@@ -293,7 +294,7 @@ static int sip_add_charging_vector(struct sip_msg *msg, struct lump *anchor)
 		LM_ERR("error while parsing message\n");
 		return -1;
 	}
-	
+
 	if (anchor == NULL) {
 		anchor = anchor_lump(msg, msg->unparsed - msg->buf, 0, 0);
 		if(anchor == 0) {
@@ -309,6 +310,7 @@ static int sip_add_charging_vector(struct sip_msg *msg, struct lump *anchor)
 	}
 	memcpy(s, _siputils_pcv.s, _siputils_pcv.len);
 
+	LM_INFO("Adding PCV line '%.*s' with length %d at offset %d\n", PCV_BUF_SIZE, _siputils_pcv.len, anchor->u.offset);
 	if(insert_new_lump_after(anchor, s, _siputils_pcv.len, 0) == 0) {
 		LM_ERR("can't insert lump\n");
 		pkg_free(s);
@@ -410,8 +412,8 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		/* if generated, reparse it */
 		sip_parse_charging_vector(pcv_body, _siputils_pcv.len - P_CHARGING_VECTOR_PREFIX_LEN - CRLF_LEN);
 		/* if it was generated, we need to send it out as a header */
-		LM_INFO("Generated PCV header %.*s\n", _siputils_pcv.len - (int)(CRLF_LEN),
-				_siputils_pcv_buf);
+		LM_INFO("Generated new PCV header %.*s\n", _siputils_pcv.len - (int)(CRLF_LEN),
+				_siputils_pcv.s);
 		i = sip_add_charging_vector(msg, deleted_pcv_lump);
 		if(i <= 0) {
 			LM_ERR("Failed to add P-Charging-Vector header\n");
