@@ -284,6 +284,7 @@ static int sip_get_charging_vector(
 		}
 	}
 	LM_DBG("No valid P-Charging-Vector header found.\n");
+	_siputils_pcv_status = PCV_NONE;
 	return 1;
 }
 
@@ -424,8 +425,6 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 				msg->rcv.bind_address->address_str.s);
 		generated_pcv.len = body_len + P_CHARGING_VECTOR_PREFIX_LEN;
 
-		/* if generated, reparse it */
-		sip_parse_charging_vector(pcv_body, body_len - CRLF_LEN);
 		/* if it was generated, we need to send it out as a header */
 		LM_INFO("Generated new PCV header %.*s\n", PCV_BUF_SIZE,
 				generated_pcv_buf);
@@ -434,7 +433,10 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 			LM_ERR("Failed to add P-Charging-Vector header\n");
 			return (i == 0) ? -1 : i;
 		}
-		_siputils_pcv_status = PCV_GENERATED;
+
+		/* if generated, reparse it */
+		if (sip_get_charging_vector(msg, &hf_pcv) == 2)
+			_siputils_pcv_status = PCV_GENERATED;
 	}
 
 	_siputils_pcv_current_msg_id = msg->id;
