@@ -168,7 +168,7 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 	LM_DBG("parsing PCV header [%.*s]\n", len, pcv_value);
 
 	char *s = NULL;
-	char *pcv_value_end = pcv_value + len;
+	const char *pcv_value_end = pcv_value + len;
 
 	s = strstr(pcv_value, "icid-value=");
 	if(s != NULL) {
