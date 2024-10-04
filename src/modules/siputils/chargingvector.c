@@ -434,8 +434,9 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 			return (i == 0) ? -1 : i;
 		}
 
-		/* if generated, reparse it */
-		if (sip_get_charging_vector(msg, &hf_pcv) == 2)
+		/* if generated and added, copy buffer and reparse it */
+		memcpy(_siputils_pcv_buf, pcv_body, PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN);
+		if (sip_parse_charging_vector(_siputils_pcv_buf, sizeof(_siputils_pcv_buf)))
 			_siputils_pcv_status = PCV_GENERATED;
 	}
 
