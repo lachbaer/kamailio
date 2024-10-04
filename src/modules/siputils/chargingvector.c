@@ -138,9 +138,10 @@ static void sip_generate_charging_vector(char *pcv)
 	}
 }
 
-static unsigned int sip_param_end(const char *s, unsigned int len)
+static unsigned int sip_param_end(const char *s, const char *end)
 {
 	unsigned int i;
+	unsigned int len = end - s;
 
 	for(i = 0; i < len; i++) {
 		if(s[i] == '\0' || s[i] == ' ' || s[i] == ';' || s[i] == ','
@@ -167,11 +168,12 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 	LM_DBG("parsing PCV header [%.*s]\n", len, pcv_value);
 
 	char *s = NULL;
+	char *pcv_value_end = pcv_value + len;
 
 	s = strstr(pcv_value, "icid-value=");
 	if(s != NULL) {
 		_siputils_pcv_id.s = s + strlen("icid-value=");
-		_siputils_pcv_id.len = sip_param_end(_siputils_pcv_id.s, len);
+		_siputils_pcv_id.len = sip_param_end(_siputils_pcv_id.s, pcv_value_end);
 		LM_DBG("parsed P-Charging-Vector icid-value=%.*s\n",
 				_siputils_pcv_id.len, _siputils_pcv_id.s);
 	} else {
@@ -183,7 +185,7 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 	s = strstr(pcv_value, "icid-generated-at=");
 	if(s != NULL) {
 		_siputils_pcv_host.s = s + strlen("icid-generated-at=");
-		_siputils_pcv_host.len = sip_param_end(_siputils_pcv_host.s, len);
+		_siputils_pcv_host.len = sip_param_end(_siputils_pcv_host.s, pcv_value_end);
 		LM_DBG("parsed P-Charging-Vector icid-generated-at=%.*s\n",
 				_siputils_pcv_host.len, _siputils_pcv_host.s);
 	} else {
@@ -195,7 +197,7 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 	s = strstr(pcv_value, "orig-ioi=");
 	if(s != NULL) {
 		_siputils_pcv_orig.s = s + strlen("orig-ioi=");
-		_siputils_pcv_orig.len = sip_param_end(_siputils_pcv_orig.s, len);
+		_siputils_pcv_orig.len = sip_param_end(_siputils_pcv_orig.s, pcv_value_end);
 		LM_INFO("parsed P-Charging-Vector orig-ioi=%.*s\n",
 				_siputils_pcv_orig.len, _siputils_pcv_orig.s);
 	} else {
@@ -206,7 +208,7 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 	s = strstr(pcv_value, "term-ioi=");
 	if(s != NULL) {
 		_siputils_pcv_term.s = s + strlen("term-ioi=");
-		_siputils_pcv_term.len = sip_param_end(_siputils_pcv_term.s, len);
+		_siputils_pcv_term.len = sip_param_end(_siputils_pcv_term.s, pcv_value_end);
 		LM_INFO("parsed P-Charging-Vector term-ioi=%.*s\n",
 				_siputils_pcv_term.len, _siputils_pcv_term.s);
 	} else {
