@@ -36,7 +36,7 @@
 #define LOOPBACK_IP 16777343
 
 #define PCV_BUF_SIZE 256
-static char _siputils_pcv_buf[PCV_BUF_SIZE];
+static char _siputils_pcv_buf[PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN];
 static str _siputils_pcv = {_siputils_pcv_buf, 0};
 static str _siputils_pcv_id = {NULL, 0};
 static str _siputils_pcv_host = {NULL, 0};
@@ -50,6 +50,15 @@ enum PCV_Status
 	PCV_NONE = 0,
 	PCV_PARSED = 1,
 	PCV_GENERATED = 2
+};
+
+enum PCV_Parameter
+{
+	PCV_PARAM_ALL = 1,
+	PCV_PARAM_GENADDR = 2,
+	PCV_PARAM_ID = 3,
+	PCV_PARAM_ORIG = 4,
+	PCV_PARAM_TERM = 5
 };
 
 static enum PCV_Status _siputils_pcv_status = PCV_NONE;
@@ -226,32 +235,33 @@ static int sip_get_charging_vector(
 			 * append p charging vector values after the header name "P-Charging-Vector" and
 			 * the ": " (+2)
 			 */
-			char *pcv_body = _siputils_pcv_buf + strlen(P_CHARGING_VECTOR) + 2;
+			char *pcv_body = _siputils_pcv_buf + P_CHARGING_VECTOR_PREFIX_LEN;
 
 			if(hf->body.len > 0) {
 				memcpy(pcv_body, hf->body.s, hf->body.len);
 				_siputils_pcv.len =
-						hf->body.len + strlen(P_CHARGING_VECTOR) + 2;
+						hf->body.len + P_CHARGING_VECTOR_PREFIX_LEN;
 				pcv_body[hf->body.len] = '\0';
 				if(sip_parse_charging_vector(pcv_body, hf->body.len) == 0) {
 					LM_ERR("P-Charging-Vector header found but failed to parse "
 						   "value [%s].\n",
 							pcv_body);
 					_siputils_pcv_status = PCV_NONE;
-					_siputils_pcv.s = NULL;
+					memset(_siputils_pcv.s, 0, sizeof(_siputils_pcv_buf));
 					_siputils_pcv.len = 0;
 				} else {
 					_siputils_pcv_status = PCV_PARSED;
-					_siputils_pcv.s = hf->body.s;
+					_siputils_pcv.s = strncpy(_siputils_pcv.s, hf->body.s, hf->body.len);
 					_siputils_pcv.len = hf->body.len;
 				}
 				*hf_pcv = hf;
 				return 2;
 			} else {
-				_siputils_pcv_id.s = 0;
-				_siputils_pcv_id.len = 0;
-				_siputils_pcv_host.s = 0;
-				_siputils_pcv_host.len = 0;
+				_siputils_pcv_id = (str){NULL, 0};
+				_siputils_pcv_host = (str){NULL, 0};
+				_siputils_pcv_orig = (str){NULL, 0};
+				_siputils_pcv_term = (str){NULL, 0};
+
 				LM_WARN("P-Charging-Vector header found but no value.\n");
 			}
 		}
@@ -267,7 +277,6 @@ static int sip_remove_charging_vector(struct sip_msg *msg, struct hdr_field *hf,
 
 	if(hf != NULL) {
 		l = del_lump(msg, hf->name.s - msg->buf, hf->len, 0);
-		LM_INFO("Deleted PCV line with length %d at offset %d\n", l->len, l->u.offset);
 		if(l == 0) {
 			LM_ERR("no memory\n");
 			return -1;
@@ -286,6 +295,7 @@ static int sip_add_charging_vector(struct sip_msg *msg, const str *pcv_hf, struc
 	char *s;
 
 	if (anchor == NULL) {
+		LM_DBG("add pcv with new lump\n");
 		anchor = anchor_lump(msg, msg->unparsed - msg->buf, 0, 0);
 		if(anchor == 0) {
 			LM_ERR("can't get anchor\n");
@@ -300,7 +310,6 @@ static int sip_add_charging_vector(struct sip_msg *msg, const str *pcv_hf, struc
 	}
 	memcpy(s, pcv_hf->s, pcv_hf->len);
 
-	LM_INFO("Adding PCV line '%.*s' with length %d at offset %d\n", PCV_BUF_SIZE, s, pcv_hf->len, anchor->u.offset);
 	if(insert_new_lump_after(anchor, s, pcv_hf->len, 0) == 0) {
 		LM_ERR("can't insert lump\n");
 		pkg_free(s);
@@ -376,9 +385,6 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		strcpy(generated_pcv_buf, P_CHARGING_VECTOR);
 		strcat(generated_pcv_buf, ": ");
 
-		LM_INFO("Empty new PCV header %.*s\n", PCV_BUF_SIZE,
-				generated_pcv.s);
-
 		char *pcv_body = generated_pcv_buf + P_CHARGING_VECTOR_PREFIX_LEN;
 		int body_len = 0;
 		char pcv_value[40];
@@ -394,18 +400,12 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		}
 
 		sip_generate_charging_vector(pcv_value);
-		LM_INFO("3. Empty new PCV header %.*s\n", PCV_BUF_SIZE,
-				generated_pcv.s);
 
 		body_len = snprintf(pcv_body, PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN,
-				"icid-value=%.*s; icid-generated-at=%.*s\r\n", 32, pcv_value,
+				"icid-value=%.*s;icid-generated-at=%.*s\r\n", 32, pcv_value,
 				msg->rcv.bind_address->address_str.len,
 				msg->rcv.bind_address->address_str.s);
 		generated_pcv.len = body_len + P_CHARGING_VECTOR_PREFIX_LEN;
-
-		_siputils_pcv_status = PCV_GENERATED;
-		LM_INFO("4. Empty new PCV header %.*s\n", PCV_BUF_SIZE,
-				generated_pcv.s);
 
 		/* if generated, reparse it */
 		sip_parse_charging_vector(pcv_body, body_len - CRLF_LEN);
@@ -417,6 +417,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 			LM_ERR("Failed to add P-Charging-Vector header\n");
 			return (i == 0) ? -1 : i;
 		}
+		_siputils_pcv_status = PCV_GENERATED;
 	}
 
 	_siputils_pcv_current_msg_id = msg->id;
@@ -447,21 +448,21 @@ int pv_get_charging_vector(
 		case PCV_PARSED:
 			LM_DBG("pcv_status==PCV_PARSED\n");
 			switch(param->pvn.u.isname.name.n) {
-				case 5:
+				case PCV_PARAM_TERM:
 					pcv_pv = _siputils_pcv_term;
 					break;
-				case 4:
+				case PCV_PARAM_ORIG:
 					pcv_pv = _siputils_pcv_orig;
 					break;
-				case 2:
+				case PCV_PARAM_GENADDR:
 					pcv_pv = _siputils_pcv_host;
 					break;
 
-				case 3:
+				case PCV_PARAM_ID:
 					pcv_pv = _siputils_pcv_id;
 					break;
 
-				case 1:
+				case PCV_PARAM_ALL:
 				default:
 					pcv_pv = _siputils_pcv;
 					break;
@@ -470,6 +471,8 @@ int pv_get_charging_vector(
 			if(pcv_pv.len > 0)
 				return pv_get_strval(msg, param, res, &pcv_pv);
 			else
+				if (param->pvn.u.isname.name.n == PCV_PARAM_ID
+					|| param->pvn.u.isname.name.n <= PCV_PARAM_ALL)
 				LM_WARN("No value for pseudo-var $pcv but status was %d.\n",
 						_siputils_pcv_status);
 
@@ -491,27 +494,27 @@ int pv_parse_charging_vector_name(pv_spec_p sp, str *in)
 	switch(in->len) {
 		case 3:
 			if(strncmp(in->s, "all", 3) == 0)
-				sp->pvp.pvn.u.isname.name.n = 1;
+				sp->pvp.pvn.u.isname.name.n = PCV_PARAM_ALL;
 			else
 				goto error;
 			break;
 		case 4:
 			if(strncmp(in->s, "orig", 4) == 0)
-				sp->pvp.pvn.u.isname.name.n = 4;
+				sp->pvp.pvn.u.isname.name.n = PCV_PARAM_ORIG;
 			else if(strncmp(in->s, "term", 4) == 0)
-				sp->pvp.pvn.u.isname.name.n = 5;
+				sp->pvp.pvn.u.isname.name.n = PCV_PARAM_TERM;
 			else
 				goto error;
 			break;
 		case 5:
 			if(strncmp(in->s, "value", 5) == 0)
-				sp->pvp.pvn.u.isname.name.n = 3;
+				sp->pvp.pvn.u.isname.name.n = PCV_PARAM_ID;
 			else
 				goto error;
 			break;
 		case 7:
 			if(strncmp(in->s, "genaddr", 7) == 0)
-				sp->pvp.pvn.u.isname.name.n = 2;
+				sp->pvp.pvn.u.isname.name.n = PCV_PARAM_GENADDR;
 			else
 				goto error;
 			break;
