@@ -36,7 +36,7 @@
 #define LOOPBACK_IP 16777343
 
 #define PCV_BUF_SIZE 256
-static char _siputils_pcv_buf[PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN];
+static char _siputils_pcv_buf[PCV_BUF_SIZE];
 static str _siputils_pcv = {_siputils_pcv_buf, 0};
 static str _siputils_pcv_id = {NULL, 0};
 static str _siputils_pcv_host = {NULL, 0};
@@ -151,6 +151,16 @@ static unsigned int sip_param_end(const char *s, unsigned int len)
 	return len;
 }
 
+static inline void sip_initialize_parse_buffers()
+{
+	memset(_siputils_pcv.s, 0, sizeof(_siputils_pcv_buf));
+	_siputils_pcv.len = 0;
+	_siputils_pcv_id = (str){NULL, 0};
+	_siputils_pcv_host = (str){NULL, 0};
+	_siputils_pcv_orig = (str){NULL, 0};
+	_siputils_pcv_term = (str){NULL, 0};
+}
+
 static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 {
 	/* now point to each PCV component */
@@ -216,6 +226,8 @@ static int sip_get_charging_vector(
 		struct sip_msg *msg, struct hdr_field **hf_pcv)
 {
 	struct hdr_field *hf;
+	int hf_body_len;
+
 	char *hdrname_cstr = P_CHARGING_VECTOR;
 	str hdrname = {hdrname_cstr, strlen(hdrname_cstr)};
 
@@ -224,6 +236,8 @@ static int sip_get_charging_vector(
 		LM_ERR("error parsing headers\n");
 		return -1;
 	}
+
+	sip_initialize_parse_buffers();
 
 	for(hf = msg->headers; hf; hf = hf->next) {
 		if(hf->name.s[0] != 'P') {
@@ -235,33 +249,34 @@ static int sip_get_charging_vector(
 			 * append p charging vector values after the header name "P-Charging-Vector" and
 			 * the ": " (+2)
 			 */
-			char *pcv_body = _siputils_pcv_buf + P_CHARGING_VECTOR_PREFIX_LEN;
+			char *pcv_body = _siputils_pcv_buf;
 
 			if(hf->body.len > 0) {
-				memcpy(pcv_body, hf->body.s, hf->body.len);
-				_siputils_pcv.len =
-						hf->body.len + P_CHARGING_VECTOR_PREFIX_LEN;
-				pcv_body[hf->body.len] = '\0';
-				if(sip_parse_charging_vector(pcv_body, hf->body.len) == 0) {
+				if (hf->body.len > sizeof(_siputils_pcv_buf) - 1) {
+					LM_WARN("received charging vector header is longer than reserved buffer - truncating.");
+					hf_body_len = sizeof(_siputils_pcv_buf) - 1;
+				}
+				else
+					hf_body_len = hf->body.len;
+
+				memcpy(pcv_body, hf->body.s, hf_body_len);
+				pcv_body[hf_body_len] = '\0';
+				_siputils_pcv.len =	hf_body_len;
+
+				if(sip_parse_charging_vector(pcv_body, hf_body_len) == 0) {
 					LM_ERR("P-Charging-Vector header found but failed to parse "
 						   "value [%s].\n",
 							pcv_body);
 					_siputils_pcv_status = PCV_NONE;
-					memset(_siputils_pcv.s, 0, sizeof(_siputils_pcv_buf));
-					_siputils_pcv.len = 0;
+					sip_initialize_parse_buffers();
 				} else {
 					_siputils_pcv_status = PCV_PARSED;
-					_siputils_pcv.s = strncpy(_siputils_pcv.s, hf->body.s, hf->body.len);
-					_siputils_pcv.len = hf->body.len;
+					_siputils_pcv.s = strncpy(_siputils_pcv.s, hf->body.s, hf_body_len);
+					_siputils_pcv.len = hf_body_len;
 				}
 				*hf_pcv = hf;
 				return 2;
 			} else {
-				_siputils_pcv_id = (str){NULL, 0};
-				_siputils_pcv_host = (str){NULL, 0};
-				_siputils_pcv_orig = (str){NULL, 0};
-				_siputils_pcv_term = (str){NULL, 0};
-
 				LM_WARN("P-Charging-Vector header found but no value.\n");
 			}
 		}
