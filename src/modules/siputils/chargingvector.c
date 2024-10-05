@@ -38,10 +38,10 @@
 #define PCV_BUF_SIZE 256
 static char _siputils_pcv_buf[PCV_BUF_SIZE];
 static str _siputils_pcv = {_siputils_pcv_buf, 0};
-static str _siputils_pcv_id = {NULL, 0};
-static str _siputils_pcv_host = {NULL, 0};
-static str _siputils_pcv_orig = {NULL, 0};
-static str _siputils_pcv_term = {NULL, 0};
+static str _siputils_pcv_id = STR_NULL;
+static str _siputils_pcv_host = STR_NULL;
+static str _siputils_pcv_orig = STR_NULL;
+static str _siputils_pcv_term = STR_NULL;
 static uint64_t _siputils_pcv_counter = 0;
 
 
@@ -58,7 +58,8 @@ enum PCV_Parameter
 	PCV_PARAM_GENADDR = 2,
 	PCV_PARAM_ID = 3,
 	PCV_PARAM_ORIG = 4,
-	PCV_PARAM_TERM = 5
+	PCV_PARAM_TERM = 5,
+	PCV_PARAM_STATUS = 6
 };
 
 static enum PCV_Status _siputils_pcv_status = PCV_NONE;
@@ -175,11 +176,10 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 		_siputils_pcv_id.s = s + strlen("icid-value=");
 		_siputils_pcv_id.len = sip_param_end(_siputils_pcv_id.s, pcv_value_end);
 		LM_DBG("parsed P-Charging-Vector icid-value=%.*s\n",
-				_siputils_pcv_id.len, _siputils_pcv_id.s);
+				STR_FMT(&_siputils_pcv_id));
 	} else {
 		LM_WARN("mandatory icid-value not found\n");
-		_siputils_pcv_id.s = NULL;
-		_siputils_pcv_id.len = 0;
+		_siputils_pcv_id = (str)STR_NULL;
 	}
 
 	s = strstr(pcv_value, "icid-generated-at=");
@@ -187,11 +187,10 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 		_siputils_pcv_host.s = s + strlen("icid-generated-at=");
 		_siputils_pcv_host.len = sip_param_end(_siputils_pcv_host.s, pcv_value_end);
 		LM_DBG("parsed P-Charging-Vector icid-generated-at=%.*s\n",
-				_siputils_pcv_host.len, _siputils_pcv_host.s);
+				STR_FMT(&_siputils_pcv_host));
 	} else {
 		LM_DBG("icid-generated-at not found\n");
-		_siputils_pcv_host.s = NULL;
-		_siputils_pcv_host.len = 0;
+		_siputils_pcv_host = (str)STR_NULL;
 	}
 
 	s = strstr(pcv_value, "orig-ioi=");
@@ -199,10 +198,9 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 		_siputils_pcv_orig.s = s + strlen("orig-ioi=");
 		_siputils_pcv_orig.len = sip_param_end(_siputils_pcv_orig.s, pcv_value_end);
 		LM_INFO("parsed P-Charging-Vector orig-ioi=%.*s\n",
-				_siputils_pcv_orig.len, _siputils_pcv_orig.s);
+				STR_FMT(&_siputils_pcv_orig));
 	} else {
-		_siputils_pcv_orig.s = NULL;
-		_siputils_pcv_orig.len = 0;
+		_siputils_pcv_orig = (str)STR_NULL;
 	}
 
 	s = strstr(pcv_value, "term-ioi=");
@@ -210,10 +208,9 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 		_siputils_pcv_term.s = s + strlen("term-ioi=");
 		_siputils_pcv_term.len = sip_param_end(_siputils_pcv_term.s, pcv_value_end);
 		LM_INFO("parsed P-Charging-Vector term-ioi=%.*s\n",
-				_siputils_pcv_term.len, _siputils_pcv_term.s);
+				STR_FMT(&_siputils_pcv_term));
 	} else {
-		_siputils_pcv_term.s = NULL;
-		_siputils_pcv_term.len = 0;
+		_siputils_pcv_term = (str)STR_NULL;
 	}
 
 	// only icid-value is mandatory, log anyway when missing icid-generated-at
@@ -221,7 +218,7 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 		LM_WARN("icid-generated-at is missing %.*s\n", len, pcv_value);
 	}
 
-	return (_siputils_pcv_id.s != NULL);
+	return (STR_WITHVAL(&_siputils_pcv_id));
 }
 
 static int sip_get_charging_vector(
@@ -422,8 +419,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 
 		body_len = snprintf(pcv_body, PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN,
 				"icid-value=%.*s;icid-generated-at=%.*s" CRLF, 32, pcv_value,
-				msg->rcv.bind_address->address_str.len,
-				msg->rcv.bind_address->address_str.s);
+				STR_FMT(&msg->rcv.bind_address->address_str));
 		generated_pcv.len = body_len + P_CHARGING_VECTOR_PREFIX_LEN;
 
 		/* if it was generated, we need to send it out as a header */
@@ -437,7 +433,8 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 
 		/* if generated and added, copy buffer and reparse it */
 		sip_initialize_parse_buffers();
-		memcpy(_siputils_pcv_buf, pcv_body, PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN - CRLF_LEN);
+		memcpy(_siputils_pcv.s, pcv_body, body_len - CRLF_LEN);
+		_siputils_pcv.len =  body_len - CRLF_LEN;
 		if (sip_parse_charging_vector(_siputils_pcv_buf, sizeof(_siputils_pcv_buf)))
 			_siputils_pcv_status = PCV_GENERATED;
 	}
@@ -505,6 +502,9 @@ int pv_get_charging_vector(
 			break;
 	}
 
+	if (param->pvn.u.isname.name.n = PCV_PARAM_STATUS)
+		return pv_get_sintval(msg, param, res, _siputils_pcv_status);
+
 	return pv_get_null(msg, param, res);
 }
 
@@ -531,6 +531,12 @@ int pv_parse_charging_vector_name(pv_spec_p sp, str *in)
 		case 5:
 			if(strncmp(in->s, "value", 5) == 0)
 				sp->pvp.pvn.u.isname.name.n = PCV_PARAM_ID;
+			else
+				goto error;
+			break;
+		case 6:
+			if(strncmp(in->s, "status", 6) == 0)
+				sp->pvp.pvn.u.isname.name.n = PCV_PARAM_STATUS;
 			else
 				goto error;
 			break;
