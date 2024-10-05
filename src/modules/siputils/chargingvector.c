@@ -218,7 +218,7 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 		LM_WARN("icid-generated-at is missing %.*s\n", len, pcv_value);
 	}
 
-	return (STR_WITHVAL(&_siputils_pcv_id));
+	return (_siputils_pcv_id.s != NULL);
 }
 
 static int sip_get_charging_vector(
@@ -502,7 +502,7 @@ int pv_get_charging_vector(
 			break;
 	}
 
-	if (param->pvn.u.isname.name.n = PCV_PARAM_STATUS)
+	if (param->pvn.u.isname.name.n == PCV_PARAM_STATUS)
 		return pv_get_sintval(msg, param, res, _siputils_pcv_status);
 
 	return pv_get_null(msg, param, res);
