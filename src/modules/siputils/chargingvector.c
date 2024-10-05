@@ -447,7 +447,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 int pv_get_charging_vector(
 		struct sip_msg *msg, pv_param_t *param, pv_value_t *res)
 {
-	str pcv_pv;
+	str pcv_pv = STR_NULL;
 
 	if(_siputils_pcv_current_msg_id != msg->id
 			|| _siputils_pcv_status == PCV_NONE) {
@@ -476,11 +476,12 @@ int pv_get_charging_vector(
 				case PCV_PARAM_GENADDR:
 					pcv_pv = _siputils_pcv_host;
 					break;
-
 				case PCV_PARAM_ID:
 					pcv_pv = _siputils_pcv_id;
 					break;
-
+				case PCV_PARAM_STATUS:
+					return pv_get_sintval(msg, param, res, _siputils_pcv_status);
+					break;
 				case PCV_PARAM_ALL:
 				default:
 					pcv_pv = _siputils_pcv;
@@ -501,9 +502,6 @@ int pv_get_charging_vector(
 		default:
 			break;
 	}
-
-	if (param->pvn.u.isname.name.n == PCV_PARAM_STATUS)
-		return pv_get_sintval(msg, param, res, _siputils_pcv_status);
 
 	return pv_get_null(msg, param, res);
 }
