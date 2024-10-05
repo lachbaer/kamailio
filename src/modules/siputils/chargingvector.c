@@ -49,7 +49,9 @@ enum PCV_Status
 {
 	PCV_NONE = 0,
 	PCV_PARSED = 1,
-	PCV_GENERATED = 2
+	PCV_GENERATED = 2,
+	PCV_DELETED = 3,
+	PCV_ERROR = -1
 };
 
 enum PCV_Parameter
@@ -153,10 +155,15 @@ static unsigned int sip_param_end(const char *s, const char *end)
 	return len;
 }
 
-static inline void sip_initialize_parse_buffers()
+static inline void sip_initialize_pcv_buffers()
 {
 	memset(_siputils_pcv.s, 0, sizeof(_siputils_pcv_buf));
 	_siputils_pcv.len = 0;
+	sip_initialize_parse_buffers();
+}
+
+static inline void sip_initialize_parse_buffers()
+{
 	_siputils_pcv_id = (str)STR_NULL;
 	_siputils_pcv_host = (str)STR_NULL;
 	_siputils_pcv_orig = (str)STR_NULL;
@@ -227,8 +234,7 @@ static int sip_get_charging_vector(
 	struct hdr_field *hf;
 	int hf_body_len;
 
-	char *hdrname_cstr = P_CHARGING_VECTOR;
-	str hdrname = {hdrname_cstr, strlen(hdrname_cstr)};
+	str hdrname = STR_STATIC_INIT(P_CHARGING_VECTOR);
 
 	/* we need to be sure we have parsed all headers */
 	if(parse_headers(msg, HDR_EOH_F, 0) < 0) {
@@ -236,7 +242,7 @@ static int sip_get_charging_vector(
 		return -1;
 	}
 
-	sip_initialize_parse_buffers();
+	sip_initialize_pcv_buffers();
 
 	for(hf = msg->headers; hf; hf = hf->next) {
 		if(hf->name.s[0] != 'P') {
@@ -244,10 +250,7 @@ static int sip_get_charging_vector(
 		}
 
 		if(cmp_hdrname_str(&hf->name, &hdrname) == 0) {
-			/*
-			 * append p charging vector values after the header name "P-Charging-Vector" and
-			 * the ": " (+2)
-			 */
+
 			char *pcv_body = _siputils_pcv_buf;
 
 			if(hf->body.len > 0) {
@@ -265,7 +268,7 @@ static int sip_get_charging_vector(
 					LM_ERR("P-Charging-Vector header found but failed to parse "
 						   "value [%s].\n",
 							pcv_body);
-					_siputils_pcv_status = PCV_NONE;
+					_siputils_pcv_status = PCV_ERROR;
 					sip_initialize_parse_buffers();
 				} else {
 					_siputils_pcv_status = PCV_PARSED;
@@ -373,7 +376,8 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 	}
 
 	if(_siputils_pcv_current_msg_id != msg->id
-			|| _siputils_pcv_status == PCV_NONE) {
+			|| _siputils_pcv_status == PCV_NONE
+			|| _siputils_pcv_status == PCV_DELETED) {
 		sip_get_charging_vector(msg, &hf_pcv);
 	}
 
@@ -381,11 +385,13 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 	 * We need to remove the original PCV if it was present and either
 	 * we were asked to remove it or we were asked to replace it
 	 */
-	if(_siputils_pcv_status == PCV_PARSED && (replace_pcv || remove_pcv)) {
+	if((_siputils_pcv_status == PCV_PARSED || _siputils_pcv_status == PCV_GENERATED )
+		&& (replace_pcv || remove_pcv)) {
 		i = sip_remove_charging_vector(msg, hf_pcv, &deleted_pcv_lump);
 		if(i <= 0)
 			return (i == 0) ? -1 : i;
-		sip_initialize_parse_buffers();
+		sip_initialize_pcv_buffers();
+		_siputils_pcv_status = PCV_DELETED;
 	}
 
 	/* Generate PCV if
@@ -432,7 +438,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		}
 
 		/* if generated and added, copy buffer and reparse it */
-		sip_initialize_parse_buffers();
+		sip_initialize_pcv_buffers();
 		memcpy(_siputils_pcv.s, pcv_body, body_len - CRLF_LEN);
 		_siputils_pcv.len =  body_len - CRLF_LEN;
 		if (sip_parse_charging_vector(_siputils_pcv_buf, sizeof(_siputils_pcv_buf)))
@@ -499,6 +505,8 @@ int pv_get_charging_vector(
 			break;
 
 		case PCV_NONE:
+		case PCV_DELETED:
+		case PCV_ERROR:		
 		default:
 			break;
 	}
