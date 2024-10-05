@@ -156,10 +156,10 @@ static inline void sip_initialize_parse_buffers()
 {
 	memset(_siputils_pcv.s, 0, sizeof(_siputils_pcv_buf));
 	_siputils_pcv.len = 0;
-	_siputils_pcv_id = (str){NULL, 0};
-	_siputils_pcv_host = (str){NULL, 0};
-	_siputils_pcv_orig = (str){NULL, 0};
-	_siputils_pcv_term = (str){NULL, 0};
+	_siputils_pcv_id = (str)STR_NULL;
+	_siputils_pcv_host = (str)STR_NULL;
+	_siputils_pcv_orig = (str)STR_NULL;
+	_siputils_pcv_term = (str)STR_NULL;
 }
 
 static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
@@ -254,15 +254,14 @@ static int sip_get_charging_vector(
 			char *pcv_body = _siputils_pcv_buf;
 
 			if(hf->body.len > 0) {
-				if (hf->body.len > sizeof(_siputils_pcv_buf) - 1) {
+				if (hf->body.len > sizeof(_siputils_pcv_buf)) {
 					LM_WARN("received charging vector header is longer than reserved buffer - truncating.");
-					hf_body_len = sizeof(_siputils_pcv_buf) - 1;
+					hf_body_len = sizeof(_siputils_pcv_buf);
 				}
 				else
 					hf_body_len = hf->body.len;
 
 				memcpy(pcv_body, hf->body.s, hf_body_len);
-				pcv_body[hf_body_len] = '\0';
 				_siputils_pcv.len =	hf_body_len;
 
 				if(sip_parse_charging_vector(pcv_body, hf_body_len) == 0) {
@@ -273,8 +272,6 @@ static int sip_get_charging_vector(
 					sip_initialize_parse_buffers();
 				} else {
 					_siputils_pcv_status = PCV_PARSED;
-					_siputils_pcv.s = strncpy(_siputils_pcv.s, hf->body.s, hf_body_len);
-					_siputils_pcv.len = hf_body_len;
 				}
 				*hf_pcv = hf;
 				return 2;
@@ -378,7 +375,10 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		}
 	}
 
-	sip_get_charging_vector(msg, &hf_pcv);
+	if(_siputils_pcv_current_msg_id != msg->id
+			|| _siputils_pcv_status == PCV_NONE) {
+		sip_get_charging_vector(msg, &hf_pcv);
+	}
 
 	/*
 	 * We need to remove the original PCV if it was present and either
@@ -388,6 +388,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		i = sip_remove_charging_vector(msg, hf_pcv, &deleted_pcv_lump);
 		if(i <= 0)
 			return (i == 0) ? -1 : i;
+		sip_initialize_parse_buffers();
 	}
 
 	/* Generate PCV if
@@ -420,7 +421,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		sip_generate_charging_vector(pcv_value);
 
 		body_len = snprintf(pcv_body, PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN,
-				"icid-value=%.*s;icid-generated-at=%.*s\r\n", 32, pcv_value,
+				"icid-value=%.*s;icid-generated-at=%.*s" CRLF, 32, pcv_value,
 				msg->rcv.bind_address->address_str.len,
 				msg->rcv.bind_address->address_str.s);
 		generated_pcv.len = body_len + P_CHARGING_VECTOR_PREFIX_LEN;
@@ -435,7 +436,8 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		}
 
 		/* if generated and added, copy buffer and reparse it */
-		memcpy(_siputils_pcv_buf, pcv_body, PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN);
+		sip_initialize_parse_buffers();
+		memcpy(_siputils_pcv_buf, pcv_body, PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN - CRLF_LEN);
 		if (sip_parse_charging_vector(_siputils_pcv_buf, sizeof(_siputils_pcv_buf)))
 			_siputils_pcv_status = PCV_GENERATED;
 	}
