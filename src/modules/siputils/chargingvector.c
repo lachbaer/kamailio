@@ -88,7 +88,7 @@ static void sip_generate_charging_vector(char *pcv, const unsigned int maxsize)
 		LM_WARN("generator buffer too small for new pcv icid-value!\n");
 		len = (maxsize - 1) / 2;
 	}
-	memset(pcv, 0, SIZE_CONF_ID);
+
 	pid = getpid();
 
 	if(ip.s_addr == 0) {
@@ -138,15 +138,13 @@ static void sip_generate_charging_vector(char *pcv, const unsigned int maxsize)
 		idx++;
 	}
 	LM_DBG("PCV generate\n");
-	int i = 0;
-	pcv[0] = '\0';
-	for(i = 0; i < len; i++) {
-		char hex[4] = {0};
+	char *ptr = pcv;
+	const char *endptr = ptr + maxsize - 1;
 
-		snprintf(hex, 4, "%02X", newConferenceIdentifier[i]);
-		strcat(pcv, hex);
+	for(int i = 0; i < len && ptr<endptr; i++) {
+		ptr += snprintf(ptr, 2, "%02X", newConferenceIdentifier[i]);
 	}
-	strcat(pcv, '\0');
+	*ptr = '\0';
 }
 
 static unsigned int sip_param_end(const char *s, const char *end)
