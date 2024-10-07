@@ -53,6 +53,7 @@ enum PCV_Status
 	PCV_DELETED = 3,
 	PCV_ERROR = -1
 };
+static const char* sstatus = {"ERROR", "NONE", "PARSED", "GENERATED", "DELETED"};
 
 enum PCV_Parameter
 {
@@ -445,6 +446,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 	}
 
 	_siputils_pcv_current_msg_id = msg->id;
+	LM_DBG("Charging vector status is now %s\n", sstatus[_siputils_pcv_status+1]);
 	return 1;
 }
 
@@ -460,55 +462,42 @@ int pv_get_charging_vector(
 		if(sip_get_charging_vector(msg, &hf_pcv) > 0) {
 			_siputils_pcv_current_msg_id = msg->id;
 		}
-		LM_DBG("Parsed charging vector for pseudo-var\n");
+		LM_DBG("Parsed charging vector for pseudo-var, current state is %s\n",
+				sstatus[_siputils_pcv_status+1]);
 	} else {
 		LM_DBG("Charging vector is in state %d for pseudo-var\n",
-				_siputils_pcv_status);
+				sstatus[_siputils_pcv_status+1]);
 	}
 
-	switch(_siputils_pcv_status) {
-		case PCV_GENERATED:
-			LM_DBG("pcv_status==PCV_GENERATED\n");
-		case PCV_PARSED:
-			LM_DBG("pcv_status==PCV_PARSED\n");
-			switch(param->pvn.u.isname.name.n) {
-				case PCV_PARAM_TERM:
-					pcv_pv = _siputils_pcv_term;
-					break;
-				case PCV_PARAM_ORIG:
-					pcv_pv = _siputils_pcv_orig;
-					break;
-				case PCV_PARAM_GENADDR:
-					pcv_pv = _siputils_pcv_genaddr;
-					break;
-				case PCV_PARAM_ID:
-					pcv_pv = _siputils_pcv_id;
-					break;
-				case PCV_PARAM_STATUS:
-					return pv_get_sintval(msg, param, res, _siputils_pcv_status);
-					break;
-				case PCV_PARAM_ALL:
-				default:
-					pcv_pv = _siputils_pcv;
-					break;
-			}
-
-			if(pcv_pv.len > 0)
-				return pv_get_strval(msg, param, res, &pcv_pv);
-			else
-				if (param->pvn.u.isname.name.n == PCV_PARAM_ID
-					|| param->pvn.u.isname.name.n <= PCV_PARAM_ALL)
-				LM_WARN("No value for pseudo-var $pcv but status was %d.\n",
-						_siputils_pcv_status);
-
+	switch(param->pvn.u.isname.name.n) {
+		case PCV_PARAM_TERM:
+			pcv_pv = _siputils_pcv_term;
 			break;
-
-		case PCV_NONE:
-		case PCV_DELETED:
-		case PCV_ERROR:		
+		case PCV_PARAM_ORIG:
+			pcv_pv = _siputils_pcv_orig;
+			break;
+		case PCV_PARAM_GENADDR:
+			pcv_pv = _siputils_pcv_genaddr;
+			break;
+		case PCV_PARAM_ID:
+			pcv_pv = _siputils_pcv_id;
+			break;
+		case PCV_PARAM_STATUS:
+			return pv_get_sintval(msg, param, res, _siputils_pcv_status);
+			break;
+		case PCV_PARAM_ALL:
 		default:
+			pcv_pv = _siputils_pcv;
 			break;
 	}
+
+	if(pcv_pv.len > 0)
+		return pv_get_strval(msg, param, res, &pcv_pv);
+	else
+		if (param->pvn.u.isname.name.n == PCV_PARAM_ID
+			|| param->pvn.u.isname.name.n <= PCV_PARAM_ALL)
+		LM_WARN("No value for pseudo-var $pcv but status was %s.\n",
+				sstatus[_siputils_pcv_status+1]);
 
 	return pv_get_null(msg, param, res);
 }
