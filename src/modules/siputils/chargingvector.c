@@ -465,7 +465,7 @@ int pv_get_charging_vector(
 		LM_DBG("Parsed charging vector for pseudo-var, current state is %s\n",
 				sstatus[_siputils_pcv_status+1]);
 	} else {
-		LM_DBG("Charging vector is in state %d for pseudo-var\n",
+		LM_DBG("Charging vector is in state %s for pseudo-var\n",
 				sstatus[_siputils_pcv_status+1]);
 	}
 
