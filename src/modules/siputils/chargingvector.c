@@ -43,6 +43,7 @@ static str _siputils_pcv_genaddr = STR_NULL;
 static str _siputils_pcv_orig = STR_NULL;
 static str _siputils_pcv_term = STR_NULL;
 static uint64_t _siputils_pcv_counter = 0;
+static struct hdr_field *_siputils_pcv_hf_pcv = NULL;
 
 
 enum PCV_Status
@@ -53,7 +54,7 @@ enum PCV_Status
 	PCV_GENERATED = 3,
 	PCV_DELETED = 4
 };
-static const char* sstatus[] = {"NONE", "ICID_MISSING", "PARSED", "GENERATED", "DELETED"};
+static const char* sstatus[] = {"NONE", "PARSED", "ICID_MISSING", "GENERATED", "DELETED"};
 
 enum PCV_Parameter
 {
@@ -259,6 +260,7 @@ static int sip_get_charging_vector(
 		if(cmp_hdrname_str(&hf->name, &hdrname) == 0) {
 
 			char *pcv_body = _siputils_pcv_buf;
+			*hf_pcv = hf;
 
 			if(hf->body.len > 0) {
 				if (hf->body.len > sizeof(_siputils_pcv_buf)) {
@@ -280,7 +282,6 @@ static int sip_get_charging_vector(
 				} else {
 					_siputils_pcv_status = PCV_PARSED;
 				}
-				*hf_pcv = hf;
 				return 2;
 			} else {
 				LM_WARN("P-Charging-Vector header found but has no body.\n");
@@ -291,6 +292,7 @@ static int sip_get_charging_vector(
 	}
 	LM_DBG("No valid P-Charging-Vector header found.\n");
 	_siputils_pcv_status = PCV_NONE;
+	*hf_pcv = NULL;
 	return 1;
 }
 
@@ -349,11 +351,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 	int replace_pcv = 0;
 	int i;
 	str flag_str;
-	struct hdr_field *hf_pcv = NULL;
 	struct lump *deleted_pcv_lump = NULL;
-
-	_siputils_pcv.len = 0;
-	_siputils_pcv_status = PCV_NONE;
 
 	if(get_str_fparam(&flag_str, msg, (gparam_p)flags) < 0) {
 		LM_ERR("failed to retrieve parameter value\n");
@@ -386,13 +384,12 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 
 	if(_siputils_pcv_current_msg_id != msg->id
 			|| _siputils_pcv_status == PCV_NONE) {
-		if(sip_get_charging_vector(msg, &hf_pcv) > 0) {
+		if(sip_get_charging_vector(msg, &_siputils_pcv_hf_pcv) > 0) {
 			_siputils_pcv_current_msg_id = msg->id;
 		}
 	}
-	if(_siputils_pcv_status == PCV_GENERATED
-		|| _siputils_pcv_status == PCV_DELETED) {
-		LM_WARN("P-Charging-Vector can only be manipulated once per message. Skipping command '%.*s'!",
+	if(_siputils_pcv_status == PCV_GENERATED ) {
+		LM_WARN("P-Charging-Vector can't be changed after generation. Skipping command '%.*s'!",
 			STR_FMT(&flag_str));
 		return -1;
 	}
@@ -403,7 +400,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 	 */
 	if((_siputils_pcv_status == PCV_PARSED || _siputils_pcv_status == PCV_ICID_MISSING)
 		&& (replace_pcv || remove_pcv)) {
-		i = sip_remove_charging_vector(msg, hf_pcv, &deleted_pcv_lump);
+		i = sip_remove_charging_vector(msg, _siputils_pcv_hf_pcv, &deleted_pcv_lump);
 		if(i <= 0)
 			return (i == 0) ? -1 : i;
 		sip_initialize_pcv_buffers();
@@ -472,8 +469,7 @@ int pv_get_charging_vector(
 
 	if(_siputils_pcv_current_msg_id != msg->id
 			|| _siputils_pcv_status == PCV_NONE) {
-		struct hdr_field *hf_pcv = NULL;
-		if(sip_get_charging_vector(msg, &hf_pcv) > 0) {
+		if(sip_get_charging_vector(msg, &_siputils_pcv_hf_pcv) > 0) {
 			_siputils_pcv_current_msg_id = msg->id;
 		}
 		LM_DBG("Parsed charging vector for pseudo-var, current state is %s\n",
