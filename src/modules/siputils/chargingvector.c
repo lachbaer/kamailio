@@ -389,10 +389,17 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 			_siputils_pcv_current_msg_id = msg->id;
 		}
 	}
-	if(_siputils_pcv_status == PCV_GENERATED ) {
-		LM_WARN("P-Charging-Vector can't be changed after generation. Skipping command '%.*s'!",
-			STR_FMT(&flag_str));
-		return PCV_NOP;
+	switch (_siputils_pcv_status) {
+		case PCV_GENERATED:
+			LM_WARN("P-Charging-Vector can't be changed after generation. Skipping command '%.*s'!",
+				STR_FMT(&flag_str));
+			return PCV_NOP;
+		case PCV_DELETED:
+			/* be consistent with the return value in this case */
+			if (remove_pcv)
+				return PCV_NOP;
+		default:
+			break;
 	}
 
 	/*
