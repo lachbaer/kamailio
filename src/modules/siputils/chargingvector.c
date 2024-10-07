@@ -53,7 +53,7 @@ enum PCV_Status
 	PCV_DELETED = 3,
 	PCV_ERROR = -1
 };
-static const char* sstatus = {"ERROR", "NONE", "PARSED", "GENERATED", "DELETED"};
+static const char* sstatus[] = {"ERROR", "NONE", "PARSED", "GENERATED", "DELETED"};
 
 enum PCV_Parameter
 {
