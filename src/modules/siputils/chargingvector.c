@@ -465,7 +465,8 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		_siputils_pcv.len =  body_len - CRLF_LEN;
 		memcpy(_siputils_pcv.s, pcv_body, _siputils_pcv.len);
 		if (sip_parse_charging_vector(_siputils_pcv_buf, sizeof(_siputils_pcv_buf))) {
-			action = (_siputils_pcv_status == PCV_DELETED) ? PCV_REPLACED : PCV_GENERATED;
+			action = (_siputils_pcv_status == PCV_DELETED || _siputils_pcv_status == PCV_ICID_MISSING) 
+						? PCV_REPLACED : PCV_GENERATED;
 			_siputils_pcv_status = PCV_GENERATED;
 		}
 	}
