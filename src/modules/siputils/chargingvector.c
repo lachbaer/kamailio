@@ -408,9 +408,10 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 	/*
 	 * We need to remove the original PCV if it was present and either
 	 * we were asked to remove it or we were asked to replace it
+	 * or when it was broken anyway
 	 */
-	if((_siputils_pcv_status == PCV_PARSED || _siputils_pcv_status == PCV_ICID_MISSING)
-		&& (replace_pcv || remove_pcv)) {
+	if((_siputils_pcv_status == PCV_PARSED && (replace_pcv || remove_pcv))
+		|| _siputils_pcv_status == PCV_ICID_MISSING) {
 		i = sip_remove_charging_vector(msg, _siputils_pcv_hf_pcv, &deleted_pcv_lump);
 		if(i <= 0)
 			return (i == 0) ? -1 : i;
@@ -465,8 +466,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		_siputils_pcv.len =  body_len - CRLF_LEN;
 		memcpy(_siputils_pcv.s, pcv_body, _siputils_pcv.len);
 		if (sip_parse_charging_vector(_siputils_pcv_buf, sizeof(_siputils_pcv_buf))) {
-			action = (_siputils_pcv_status == PCV_DELETED || _siputils_pcv_status == PCV_ICID_MISSING) 
-						? PCV_REPLACED : PCV_GENERATED;
+			action = (_siputils_pcv_status == PCV_DELETED) 	? PCV_REPLACED : PCV_GENERATED;
 			_siputils_pcv_status = PCV_GENERATED;
 		}
 	}
