@@ -142,9 +142,8 @@ static void sip_generate_charging_vector(char *pcv, const unsigned int maxsize)
 	const char *endptr = ptr + maxsize - 1;
 
 	for(int i = 0; i < len && ptr<endptr; i++) {
-		ptr += snprintf(ptr, 2, "%02X", newConferenceIdentifier[i]);
+		ptr += (snprintf(ptr, 3, "%02X", newConferenceIdentifier[i]) - 1);
 	}
-	*ptr = '\0';
 }
 
 static unsigned int sip_param_end(const char *s, const char *end)
