@@ -161,12 +161,6 @@ static unsigned int sip_param_end(const char *s, const char *end)
 	return len;
 }
 
-static inline void sip_initialize_pcv_buffers()
-{
-	memset(_siputils_pcv.s, 0, sizeof(_siputils_pcv_buf));
-	_siputils_pcv.len = 0;
-	sip_initialize_parse_buffers();
-}
 
 static inline void sip_initialize_parse_buffers()
 {
@@ -174,6 +168,13 @@ static inline void sip_initialize_parse_buffers()
 	_siputils_pcv_genaddr = (str)STR_NULL;
 	_siputils_pcv_orig = (str)STR_NULL;
 	_siputils_pcv_term = (str)STR_NULL;
+}
+
+static inline void sip_initialize_pcv_buffers()
+{
+	memset(_siputils_pcv.s, 0, sizeof(_siputils_pcv_buf));
+	_siputils_pcv.len = 0;
+	sip_initialize_parse_buffers();
 }
 
 static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
@@ -410,9 +411,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 
 		char *pcv_body = generated_pcv_buf + P_CHARGING_VECTOR_PREFIX_LEN;
 		int body_len = 0;
-		char pcv_value[40];
-
-		memset(pcv_value, 0, sizeof(pcv_value));
+		char pcv_value[40] = {0};
 
 		/* We use the IP address of the interface that received the message as generated-at */
 		if(msg->rcv.bind_address == NULL
@@ -425,7 +424,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		sip_generate_charging_vector(pcv_value, sizeof(pcv_value));
 
 		body_len = snprintf(pcv_body, PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN,
-				"icid-value=%.*s;icid-generated-at=%.*s" CRLF, sizeof(pcv_value), pcv_value,
+				"icid-value=%.*s;icid-generated-at=%.*s" CRLF, (int)sizeof(pcv_value), pcv_value,
 				STR_FMT(&msg->rcv.bind_address->address_str));
 		generated_pcv.len = body_len + P_CHARGING_VECTOR_PREFIX_LEN;
 
@@ -441,7 +440,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		/* if generated and added, copy buffer and reparse it */
 		sip_initialize_pcv_buffers();
 		_siputils_pcv.len =  body_len - CRLF_LEN;
-		memcpy(_siputils_pcv.s, pcv_body, _siputils_pcv.s);
+		memcpy(_siputils_pcv.s, pcv_body, _siputils_pcv.len);
 		if (sip_parse_charging_vector(_siputils_pcv_buf, sizeof(_siputils_pcv_buf)))
 			_siputils_pcv_status = PCV_GENERATED;
 	}
