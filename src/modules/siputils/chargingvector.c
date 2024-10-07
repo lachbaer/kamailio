@@ -284,6 +284,8 @@ static int sip_get_charging_vector(
 				return 2;
 			} else {
 				LM_WARN("P-Charging-Vector header found but has no body.\n");
+				_siputils_pcv_status = PCV_ICID_MISSING;
+				return 1;
 			}
 		}
 	}
@@ -390,8 +392,8 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 	}
 	if(_siputils_pcv_status == PCV_GENERATED
 		|| _siputils_pcv_status == PCV_DELETED) {
-		LM_WARN("P-Charging-Vector can only be manipulated once per message. Skipping command '%s'!",
-			flag_str.s);
+		LM_WARN("P-Charging-Vector can only be manipulated once per message. Skipping command '%.*s'!",
+			STR_FMT(&flag_str));
 		return -1;
 	}
 
