@@ -1281,6 +1281,10 @@ if(is_first_hop("1")) { ... }
 			'r' - remove; 'g' - generate; 'f' - force (remove + generate).
 		</para>
 		<para>
+			Returns the new state value (see below <emphasis>$pcv(state)</emphasis>)
+			or value <emphasis>1</emphasis> when nothing was changed.
+		<para>
+		<para>
 		This function can be used from ANY_ROUTE.
 		</para>
 		<example>

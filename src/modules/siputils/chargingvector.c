@@ -48,11 +48,12 @@ static struct hdr_field *_siputils_pcv_hf_pcv = NULL;
 
 enum PCV_Status
 {
-	PCV_NONE = 1,
-	PCV_PARSED = 2,
-	PCV_ICID_MISSING = 3,
-	PCV_GENERATED = 4,
-	PCV_DELETED = 5
+	PCV_NONE = 0,
+	PCV_PARSED = 1,
+	PCV_ICID_MISSING = 2,
+	PCV_GENERATED = 3,
+	PCV_DELETED = 4,
+	PCV_NOP = PCV_PARSED
 };
 static const char* sstatus[] = {"N/A", "NONE", "PARSED", "ICID_MISSING", "GENERATED", "DELETED"};
 
@@ -391,7 +392,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 	if(_siputils_pcv_status == PCV_GENERATED ) {
 		LM_WARN("P-Charging-Vector can't be changed after generation. Skipping command '%.*s'!",
 			STR_FMT(&flag_str));
-		return -1;
+		return PCV_NOP;
 	}
 
 	/*
@@ -458,7 +459,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 
 	_siputils_pcv_current_msg_id = msg->id;
 	LM_DBG("Charging vector status is now %s\n", sstatus[_siputils_pcv_status]);
-	return _siputils_pcv_status;
+	return _siputils_pcv_status ? _siputils_pcv_status : PCV_NOP;
 }
 
 
