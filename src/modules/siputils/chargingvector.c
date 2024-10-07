@@ -352,6 +352,8 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 	int remove_pcv = 0;
 	int replace_pcv = 0;
 	int i;
+	int action = PCV_NOP;
+
 	str flag_str;
 	struct lump *deleted_pcv_lump = NULL;
 
@@ -414,6 +416,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 			return (i == 0) ? -1 : i;
 		sip_initialize_pcv_buffers();
 		_siputils_pcv_status = PCV_DELETED;
+		action = PCV_DELETED;
 	}
 
 	/* Generate PCV if
@@ -462,12 +465,13 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		_siputils_pcv.len =  body_len - CRLF_LEN;
 		memcpy(_siputils_pcv.s, pcv_body, _siputils_pcv.len);
 		if (sip_parse_charging_vector(_siputils_pcv_buf, sizeof(_siputils_pcv_buf)))
-			_siputils_pcv_status = PCV_GENERATED;
+			_siputils_pcv_status == PCV_GENERATED;
+			action = action == PCV_DELETED ? PCV_REPLACED : PCV_GENERATED;
 	}
 
 	_siputils_pcv_current_msg_id = msg->id;
 	LM_DBG("Charging vector status is now %s\n", sstatus[_siputils_pcv_status]);
-	return _siputils_pcv_status ? _siputils_pcv_status : PCV_NOP;
+	return action;
 }
 
 
