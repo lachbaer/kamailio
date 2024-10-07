@@ -1539,23 +1539,23 @@ if (sip_parse_headers()) {
 						newly generated or other.
 					<itemizedlist>
 						<listitem><para>
-							<emphasis>-1</emphasis> - P-Charging-Vector is present, but has no valid
-														<emphasis>icid-value</emphasis> parameter.
-														Or other error while parsing.
-						</para></listitem>
-						<listitem><para>
 							<emphasis>0</emphasis> - No P-Charging-Vector header in message.
 						</para></listitem>
 						<listitem><para>
-							<emphasis>1</emphasis> - P-Charging-Vector header in message and parsed.
+							<emphasis>1</emphasis> - P-Charging-Vector header in message and parsed successfully.
 						</para></listitem>
 						<listitem><para>
-							<emphasis>2</emphasis> - P-Charging-Vector header has been newly generated.
+							<emphasis>2</emphasis> - P-Charging-Vector is present, but has no valid
+														<emphasis>icid-value</emphasis> parameter.
 						</para></listitem>
 						<listitem><para>
-							<emphasis>3</emphasis> - P-Charging-Vector header has been deleted.
+							<emphasis>3</emphasis> - P-Charging-Vector header has been newly generated or replaced.
+						</para></listitem>
+						<listitem><para>
+							<emphasis>4</emphasis> - P-Charging-Vector header has been deleted.
 						</para></listitem>
 					</itemizedlist>
+					Negative values indicate an internal error during the parsing process.
 					</para>
 			</section>
 	</section>
