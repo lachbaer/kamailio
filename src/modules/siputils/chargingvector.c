@@ -53,9 +53,10 @@ enum PCV_Status
 	PCV_ICID_MISSING = 2,
 	PCV_GENERATED = 3,
 	PCV_DELETED = 4,
+	PCV_REPLACED = 5,
 	PCV_NOP = PCV_PARSED
 };
-static const char* sstatus[] = {"N/A", "NONE", "PARSED", "ICID_MISSING", "GENERATED", "DELETED"};
+static const char* sstatus[] = {"NONE", "PARSED", "ICID_MISSING", "GENERATED", "DELETED", "REPLACED"};
 
 enum PCV_Parameter
 {
