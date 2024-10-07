@@ -48,13 +48,13 @@ static struct hdr_field *_siputils_pcv_hf_pcv = NULL;
 
 enum PCV_Status
 {
-	PCV_NONE = 0,
-	PCV_PARSED = 1,
-	PCV_ICID_MISSING = 2,
-	PCV_GENERATED = 3,
-	PCV_DELETED = 4
+	PCV_NONE = 1,
+	PCV_PARSED = 2,
+	PCV_ICID_MISSING = 3,
+	PCV_GENERATED = 4,
+	PCV_DELETED = 5
 };
-static const char* sstatus[] = {"NONE", "PARSED", "ICID_MISSING", "GENERATED", "DELETED"};
+static const char* sstatus[] = {"N/A", "NONE", "PARSED", "ICID_MISSING", "GENERATED", "DELETED"};
 
 enum PCV_Parameter
 {
