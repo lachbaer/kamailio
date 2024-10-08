@@ -331,37 +331,35 @@ static int sip_add_charging_vector(struct sip_msg *msg, const str *pcv_hf, struc
 		}
 	}
 
-	buf.s = (char *)pkg_malloc(CRLF_LEN + 1);
-	if (!buf.s) {
-		PKG_MEM_ERROR;
-		return -1;
-	}
-	buf.len = sprintf(buf.s, CRLF);
-	if((anchor = insert_new_lump_before(anchor, buf.s, buf.len, 0)) == 0) {
-		LM_ERR("can't insert lump\n");
-		pkg_free(buf.s);
-		return -1;
-	}
-
-	if((anchor = insert_subst_lump_before(anchor, SUBST_SND_IP, 0)) == 0) {
-		LM_ERR("can't insert lump\n");
-		return -1;
-	}
-
 	buf.s = (char *)pkg_malloc(pcv_hf->len);
-	if (!buf.s) {
-		PKG_MEM_ERROR;
-		return -1;
-	}
+	if (!buf.s)
+		goto out3;
 	memcpy(buf.s, pcv_hf->s, pcv_hf->len);
 
-	if((anchor = insert_new_lump_before(anchor, buf.s, pcv_hf->len, 0)) == 0) {
-		LM_ERR("can't insert lump\n");
-		pkg_free(buf.s);
-		return -1;
-	}
+	if((anchor = insert_new_lump_before(anchor, buf.s, pcv_hf->len, 0)) == 0)
+		goto out1;
+
+	if((anchor = insert_subst_lump_before(anchor, SUBST_SND_IP, 0)) == 0) 
+		goto out2;
+
+	buf.s = (char *)pkg_malloc(CRLF_LEN + 1);
+	if (!buf.s) 
+		goto out3;
+	
+	buf.len = sprintf(buf.s, CRLF);
+	if((anchor = insert_new_lump_before(anchor, buf.s, buf.len, 0)) == 0) 
+		goto out1;
 
 	return 1;
+
+out1:
+		pkg_free(buf.s);
+out2:
+		LM_ERR("can't insert lump\n");
+		return -1;
+out3:
+		PKG_MEM_ERROR;
+		return -1;
 }
 
 int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
