@@ -320,7 +320,7 @@ static int sip_remove_charging_vector(struct sip_msg *msg, struct hdr_field *hf,
 
 static int sip_add_charging_vector(struct sip_msg *msg, const str *pcv_hf, struct lump *anchor)
 {
-	char *s;
+	str buf = STR_NULL;
 
 	if (anchor == NULL) {
 		LM_DBG("add pcv with new lump\n");
@@ -331,18 +331,36 @@ static int sip_add_charging_vector(struct sip_msg *msg, const str *pcv_hf, struc
 		}
 	}
 
-	s = (char *)pkg_malloc(pcv_hf->len);
-	if(!s) {
+	buf.s = (char *)pkg_malloc(CRLF_LEN + 1);
+	if (!buf.s) {
 		PKG_MEM_ERROR;
 		return -1;
 	}
-	memcpy(s, pcv_hf->s, pcv_hf->len);
-
-	if(insert_new_lump_after(anchor, s, pcv_hf->len, 0) == 0) {
+	buf.len = sprintf(buf.s, CRLF);
+	if((anchor = insert_new_lump_before(anchor, buf.s, buf.len, 0)) == 0) {
 		LM_ERR("can't insert lump\n");
-		pkg_free(s);
+		pkg_free(buf.s);
 		return -1;
 	}
+
+	if((anchor = insert_subst_lump_before(anchor, SUBST_SND_IP, 0)) == 0) {
+		LM_ERR("can't insert lump\n");
+		return -1;
+	}
+
+	buf.s = (char *)pkg_malloc(pcv_hf->len);
+	if (!buf.s) {
+		PKG_MEM_ERROR;
+		return -1;
+	}
+	memcpy(buf.s, pcv_hf->s, pcv_hf->len);
+
+	if((anchor = insert_new_lump_before(anchor, buf.s, pcv_hf->len, 0)) == 0) {
+		LM_ERR("can't insert lump\n");
+		pkg_free(buf.s);
+		return -1;
+	}
+
 	return 1;
 }
 
@@ -437,24 +455,16 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		int body_len = 0;
 		char pcv_value[40] = {0};
 
-		/* We use the IP address of the interface that received the message as generated-at */
-		if(msg->rcv.bind_address == NULL
-				|| msg->rcv.bind_address->address_str.s == NULL) {
-			LM_ERR("No IP address for message. Failed to generate charging "
-				   "vector.\n");
-			return -2;
-		}
-
 		sip_generate_charging_vector(pcv_value, sizeof(pcv_value));
 
 		body_len = snprintf(pcv_body, PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN,
-				"icid-value=%.*s;icid-generated-at=%.*s" CRLF, (int)sizeof(pcv_value), pcv_value,
-				STR_FMT(&msg->rcv.bind_address->address_str));
+				"icid-value=%.*s;icid-generated-at=", (int)sizeof(pcv_value), pcv_value);
 		generated_pcv.len = body_len + P_CHARGING_VECTOR_PREFIX_LEN;
 
 		/* if it was generated, we need to send it out as a header */
 		LM_INFO("Generated new PCV header %.*s\n", PCV_BUF_SIZE,
 				generated_pcv_buf);
+
 		i = sip_add_charging_vector(msg, &generated_pcv, deleted_pcv_lump);
 		if(i <= 0) {
 			LM_ERR("Failed to add P-Charging-Vector header\n");
