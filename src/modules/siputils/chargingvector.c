@@ -89,7 +89,7 @@ static void sip_generate_charging_vector(char *pcv, const unsigned int maxsize)
 
 	/* if supplied buffer cannot carry 16 (SIZE_CONF_ID) hex characters and a null
 		terminator (=33 bytes), then reduce length of generated icid-value */
-	if(maxsize<(len * 2 + 1)) {
+	if(maxsize < (len * 2 + 1)) {
 		LM_WARN("generator buffer too small for new pcv icid-value!\n");
 		len = (maxsize - 1) / 2;
 	}
@@ -204,7 +204,7 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 	if(s != NULL) {
 		_siputils_pcv_genaddr.s = s + strlen("icid-generated-at=");
 		_siputils_pcv_genaddr.len =
-						sip_param_end(_siputils_pcv_genaddr.s, pcv_value_end);
+				sip_param_end(_siputils_pcv_genaddr.s, pcv_value_end);
 		LM_DBG("parsed P-Charging-Vector icid-generated-at=%.*s\n",
 				STR_FMT(&_siputils_pcv_genaddr));
 	} else {
@@ -216,7 +216,7 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 	if(s != NULL) {
 		_siputils_pcv_orig.s = s + strlen("orig-ioi=");
 		_siputils_pcv_orig.len =
-						sip_param_end(_siputils_pcv_orig.s, pcv_value_end);
+				sip_param_end(_siputils_pcv_orig.s, pcv_value_end);
 		LM_INFO("parsed P-Charging-Vector orig-ioi=%.*s\n",
 				STR_FMT(&_siputils_pcv_orig));
 	} else {
@@ -227,7 +227,7 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 	if(s != NULL) {
 		_siputils_pcv_term.s = s + strlen("term-ioi=");
 		_siputils_pcv_term.len =
-						sip_param_end(_siputils_pcv_term.s, pcv_value_end);
+				sip_param_end(_siputils_pcv_term.s, pcv_value_end);
 		LM_INFO("parsed P-Charging-Vector term-ioi=%.*s\n",
 				STR_FMT(&_siputils_pcv_term));
 	} else {
@@ -236,7 +236,7 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 
 	// only icid-value is mandatory, log anyway when missing icid-generated-at
 	if(_siputils_pcv_genaddr.s == NULL && _siputils_pcv_id.s != NULL
-					&& len > 0) {
+			&& len > 0) {
 		LM_WARN("icid-generated-at is missing %.*s\n", len, pcv_value);
 	}
 
@@ -272,7 +272,7 @@ static int sip_get_charging_vector(
 			if(hf->body.len > 0) {
 				if(hf->body.len > sizeof(_siputils_pcv_buf)) {
 					LM_WARN("received charging vector header is longer than "
-									"reserved buffer - truncating.");
+							"reserved buffer - truncating.");
 					hf_body_len = sizeof(_siputils_pcv_buf);
 				} else
 					hf_body_len = hf->body.len;
@@ -305,7 +305,7 @@ static int sip_get_charging_vector(
 
 // Remove PCV if it is in the inbound request (if it was found by sip_get_charging_vector)
 static int sip_remove_charging_vector(
-				struct sip_msg *msg, struct hdr_field *hf, struct lump **anchor)
+		struct sip_msg *msg, struct hdr_field *hf, struct lump **anchor)
 {
 	struct lump *l;
 
@@ -325,7 +325,7 @@ static int sip_remove_charging_vector(
 }
 
 static int sip_add_charging_vector(
-				struct sip_msg *msg, const str *pcv_hf, struct lump *anchor)
+		struct sip_msg *msg, const str *pcv_hf, struct lump *anchor)
 {
 	str buf = STR_NULL;
 
@@ -346,15 +346,15 @@ static int sip_add_charging_vector(
 	if((anchor = insert_new_lump_before(anchor, buf.s, pcv_hf->len, 0)) == 0)
 		goto out1;
 
-	if((anchor = insert_subst_lump_before(anchor, SUBST_SND_IP, 0)) == 0) 
+	if((anchor = insert_subst_lump_before(anchor, SUBST_SND_IP, 0)) == 0)
 		goto out2;
 
 	buf.s = (char *)pkg_malloc(CRLF_LEN + 1);
-	if(!buf.s) 
+	if(!buf.s)
 		goto out3;
 	
 	buf.len = sprintf(buf.s, CRLF);
-	if((anchor = insert_new_lump_before(anchor, buf.s, buf.len, 0)) == 0) 
+	if((anchor = insert_new_lump_before(anchor, buf.s, buf.len, 0)) == 0)
 		goto out1;
 
 	return 1;
@@ -418,8 +418,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 	switch(_siputils_pcv_status) {
 		case PCV_GENERATED:
 			LM_WARN("P-Charging-Vector can't be changed after generation. "
-							"Skipping command '%.*s'!",
-							STR_FMT(&flag_str));
+					"Skipping command '%.*s'!", STR_FMT(&flag_str));
 			return PCV_NOP;
 		case PCV_DELETED:
 			/* be consistent with the return value in this case */
@@ -435,9 +434,9 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 	 * or when it was broken anyway
 	 */
 	if((_siputils_pcv_status == PCV_PARSED && (replace_pcv || remove_pcv))
-					|| _siputils_pcv_status == PCV_ICID_MISSING) {
+			|| _siputils_pcv_status == PCV_ICID_MISSING) {
 		i = sip_remove_charging_vector(
-						msg, _siputils_pcv_hf_pcv, &deleted_pcv_lump);
+				msg, _siputils_pcv_hf_pcv, &deleted_pcv_lump);
 		if(i <= 0)
 			return (i == 0) ? -1 : i;
 		sip_initialize_pcv_buffers();
@@ -451,7 +450,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 	 */
 	if(replace_pcv
 			|| (generate_pcv && _siputils_pcv_status != PCV_GENERATED
-					&& _siputils_pcv_status != PCV_PARSED)) {
+			&& _siputils_pcv_status != PCV_PARSED)) {
 		char generated_pcv_buf[PCV_BUF_SIZE] = {0};
 		str generated_pcv = {generated_pcv_buf, 0};
 
@@ -465,9 +464,9 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		sip_generate_charging_vector(pcv_value, sizeof(pcv_value));
 
 		body_len = snprintf(pcv_body,
-						PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN,
-						"icid-value=%.*s;icid-generated-at=", (int)sizeof(pcv_value),
-						pcv_value);
+				PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN,
+				"icid-value=%.*s;icid-generated-at=", (int)sizeof(pcv_value),
+				pcv_value);
 		generated_pcv.len = body_len + P_CHARGING_VECTOR_PREFIX_LEN;
 
 		/* if it was generated, we need to send it out as a header */
@@ -512,8 +511,7 @@ int pv_get_charging_vector(
 				sstatus[_siputils_pcv_status]);
 	} else {
 		LM_DBG("Charging vector is in state %s for pseudo-var, no parsing "
-					"needed\n",
-				sstatus[_siputils_pcv_status]);
+				"needed\n", sstatus[_siputils_pcv_status]);
 	}
 
 	switch(param->pvn.u.isname.name.n) {
@@ -541,7 +539,7 @@ int pv_get_charging_vector(
 	if(pcv_pv.len > 0)
 		return pv_get_strval(msg, param, res, &pcv_pv);
 	else if(param->pvn.u.isname.name.n == PCV_PARAM_ID
-					|| param->pvn.u.isname.name.n <= PCV_PARAM_ALL)
+			|| param->pvn.u.isname.name.n <= PCV_PARAM_ALL)
 		LM_WARN("No value for pseudo-var $pcv but status was %s.\n",
 				sstatus[_siputils_pcv_status]);
 
