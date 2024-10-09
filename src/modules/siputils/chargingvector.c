@@ -57,7 +57,7 @@ enum PCV_Status
 	PCV_NOP = PCV_PARSED
 };
 static const char *sstatus[] = {
-				"NONE", "PARSED", "ICID_MISSING", "GENERATED", "DELETED", "REPLACED"};
+		"NONE", "PARSED", "ICID_MISSING", "GENERATED", "DELETED", "REPLACED"};
 
 enum PCV_Parameter
 {
@@ -484,9 +484,10 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		sip_initialize_pcv_buffers();
 		_siputils_pcv.len = body_len - CRLF_LEN;
 		memcpy(_siputils_pcv.s, pcv_body, _siputils_pcv.len);
-		if (sip_parse_charging_vector(
+		if(sip_parse_charging_vector(
 							_siputils_pcv_buf, sizeof(_siputils_pcv_buf))) {
-			action = (_siputils_pcv_status == PCV_DELETED) 	? PCV_REPLACED : PCV_GENERATED;
+			action = (_siputils_pcv_status == PCV_DELETED) 	? PCV_REPLACED
+							: PCV_GENERATED;
 			_siputils_pcv_status = PCV_GENERATED;
 		}
 	}
