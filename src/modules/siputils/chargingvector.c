@@ -352,7 +352,7 @@ static int sip_add_charging_vector(
 	buf.s = (char *)pkg_malloc(CRLF_LEN + 1);
 	if(!buf.s)
 		goto out3;
-	
+
 	buf.len = sprintf(buf.s, CRLF);
 	if((anchor = insert_new_lump_before(anchor, buf.s, buf.len, 0)) == 0)
 		goto out1;
@@ -451,7 +451,7 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 	 */
 	if(replace_pcv
 			|| (generate_pcv && _siputils_pcv_status != PCV_GENERATED
-					&& _siputils_pcv_status != PCV_PARSED)) {
+						&& _siputils_pcv_status != PCV_PARSED)) {
 		char generated_pcv_buf[PCV_BUF_SIZE] = {0};
 		str generated_pcv = {generated_pcv_buf, 0};
 
@@ -485,9 +485,9 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 		_siputils_pcv.len = body_len - CRLF_LEN;
 		memcpy(_siputils_pcv.s, pcv_body, _siputils_pcv.len);
 		if(sip_parse_charging_vector(
-				_siputils_pcv_buf, sizeof(_siputils_pcv_buf))) {
+					_siputils_pcv_buf, sizeof(_siputils_pcv_buf))) {
 			action = (_siputils_pcv_status == PCV_DELETED) 	? PCV_REPLACED
-															: PCV_GENERATED;
+														: PCV_GENERATED;
 			_siputils_pcv_status = PCV_GENERATED;
 		}
 	}
