@@ -56,7 +56,8 @@ enum PCV_Status
 	PCV_REPLACED = 5,
 	PCV_NOP = PCV_PARSED
 };
-static const char* sstatus[] = {"NONE", "PARSED", "ICID_MISSING", "GENERATED", "DELETED", "REPLACED"};
+static const char *sstatus[] = {
+				"NONE", "PARSED", "ICID_MISSING", "GENERATED", "DELETED", "REPLACED"};
 
 enum PCV_Parameter
 {
@@ -88,7 +89,7 @@ static void sip_generate_charging_vector(char *pcv, const unsigned int maxsize)
 
 	/* if supplied buffer cannot carry 16 (SIZE_CONF_ID) hex characters and a null
 		terminator (=33 bytes), then reduce length of generated icid-value */
-	if (maxsize<(len * 2 + 1)) {
+	if(maxsize<(len * 2 + 1)) {
 		LM_WARN("generator buffer too small for new pcv icid-value!\n");
 		len = (maxsize - 1) / 2;
 	}
@@ -145,7 +146,7 @@ static void sip_generate_charging_vector(char *pcv, const unsigned int maxsize)
 	char *ptr = pcv;
 	const char *endptr = ptr + maxsize - 1;
 
-	for(int i = 0; i < len && ptr<endptr; i++) {
+	for(int i = 0; i < len && ptr < endptr; i++) {
 		ptr += (snprintf(ptr, 3, "%02X", newConferenceIdentifier[i]) - 1);
 	}
 }
@@ -202,7 +203,8 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 	s = strstr(pcv_value, "icid-generated-at=");
 	if(s != NULL) {
 		_siputils_pcv_genaddr.s = s + strlen("icid-generated-at=");
-		_siputils_pcv_genaddr.len = sip_param_end(_siputils_pcv_genaddr.s, pcv_value_end);
+		_siputils_pcv_genaddr.len =
+						sip_param_end(_siputils_pcv_genaddr.s, pcv_value_end);
 		LM_DBG("parsed P-Charging-Vector icid-generated-at=%.*s\n",
 				STR_FMT(&_siputils_pcv_genaddr));
 	} else {
@@ -213,7 +215,8 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 	s = strstr(pcv_value, "orig-ioi=");
 	if(s != NULL) {
 		_siputils_pcv_orig.s = s + strlen("orig-ioi=");
-		_siputils_pcv_orig.len = sip_param_end(_siputils_pcv_orig.s, pcv_value_end);
+		_siputils_pcv_orig.len =
+						sip_param_end(_siputils_pcv_orig.s, pcv_value_end);
 		LM_INFO("parsed P-Charging-Vector orig-ioi=%.*s\n",
 				STR_FMT(&_siputils_pcv_orig));
 	} else {
@@ -223,7 +226,8 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 	s = strstr(pcv_value, "term-ioi=");
 	if(s != NULL) {
 		_siputils_pcv_term.s = s + strlen("term-ioi=");
-		_siputils_pcv_term.len = sip_param_end(_siputils_pcv_term.s, pcv_value_end);
+		_siputils_pcv_term.len =
+						sip_param_end(_siputils_pcv_term.s, pcv_value_end);
 		LM_INFO("parsed P-Charging-Vector term-ioi=%.*s\n",
 				STR_FMT(&_siputils_pcv_term));
 	} else {
@@ -231,7 +235,8 @@ static int sip_parse_charging_vector(const char *pcv_value, unsigned int len)
 	}
 
 	// only icid-value is mandatory, log anyway when missing icid-generated-at
-	if(_siputils_pcv_genaddr.s == NULL && _siputils_pcv_id.s != NULL && len > 0) {
+	if(_siputils_pcv_genaddr.s == NULL && _siputils_pcv_id.s != NULL
+					&& len > 0) {
 		LM_WARN("icid-generated-at is missing %.*s\n", len, pcv_value);
 	}
 
@@ -265,15 +270,15 @@ static int sip_get_charging_vector(
 			*hf_pcv = hf;
 
 			if(hf->body.len > 0) {
-				if (hf->body.len > sizeof(_siputils_pcv_buf)) {
-					LM_WARN("received charging vector header is longer than reserved buffer - truncating.");
+				if(hf->body.len > sizeof(_siputils_pcv_buf)) {
+					LM_WARN("received charging vector header is longer than "
+									"reserved buffer - truncating.");
 					hf_body_len = sizeof(_siputils_pcv_buf);
-				}
-				else
+				} else
 					hf_body_len = hf->body.len;
 
 				memcpy(pcv_body, hf->body.s, hf_body_len);
-				_siputils_pcv.len =	hf_body_len;
+				_siputils_pcv.len = hf_body_len;
 
 				if(sip_parse_charging_vector(pcv_body, hf_body_len) == 0) {
 					LM_ERR("P-Charging-Vector header found but failed to parse "
@@ -299,7 +304,8 @@ static int sip_get_charging_vector(
 }
 
 // Remove PCV if it is in the inbound request (if it was found by sip_get_charging_vector)
-static int sip_remove_charging_vector(struct sip_msg *msg, struct hdr_field *hf, struct lump **anchor)
+static int sip_remove_charging_vector(
+				struct sip_msg *msg, struct hdr_field *hf, struct lump **anchor)
 {
 	struct lump *l;
 
@@ -309,7 +315,7 @@ static int sip_remove_charging_vector(struct sip_msg *msg, struct hdr_field *hf,
 			LM_ERR("no memory\n");
 			return -1;
 		}
-		if (anchor != NULL) {
+		if(anchor != NULL) {
 			*anchor = l;
 		}
 		return 2;
@@ -318,11 +324,12 @@ static int sip_remove_charging_vector(struct sip_msg *msg, struct hdr_field *hf,
 	}
 }
 
-static int sip_add_charging_vector(struct sip_msg *msg, const str *pcv_hf, struct lump *anchor)
+static int sip_add_charging_vector(
+				struct sip_msg *msg, const str *pcv_hf, struct lump *anchor)
 {
 	str buf = STR_NULL;
 
-	if (anchor == NULL) {
+	if(anchor == NULL) {
 		LM_DBG("add pcv with new lump\n");
 		anchor = anchor_lump(msg, msg->unparsed - msg->buf, 0, 0);
 		if(anchor == 0) {
@@ -332,7 +339,7 @@ static int sip_add_charging_vector(struct sip_msg *msg, const str *pcv_hf, struc
 	}
 
 	buf.s = (char *)pkg_malloc(pcv_hf->len);
-	if (!buf.s)
+	if(!buf.s)
 		goto out3;
 	memcpy(buf.s, pcv_hf->s, pcv_hf->len);
 
@@ -343,7 +350,7 @@ static int sip_add_charging_vector(struct sip_msg *msg, const str *pcv_hf, struc
 		goto out2;
 
 	buf.s = (char *)pkg_malloc(CRLF_LEN + 1);
-	if (!buf.s) 
+	if(!buf.s) 
 		goto out3;
 	
 	buf.len = sprintf(buf.s, CRLF);
@@ -353,13 +360,13 @@ static int sip_add_charging_vector(struct sip_msg *msg, const str *pcv_hf, struc
 	return 1;
 
 out1:
-		pkg_free(buf.s);
+	pkg_free(buf.s);
 out2:
-		LM_ERR("can't insert lump\n");
-		return -1;
+	LM_ERR("can't insert lump\n");
+	return -1;
 out3:
-		PKG_MEM_ERROR;
-		return -1;
+	PKG_MEM_ERROR;
+	return -1;
 }
 
 int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
@@ -408,14 +415,15 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 			_siputils_pcv_current_msg_id = msg->id;
 		}
 	}
-	switch (_siputils_pcv_status) {
+	switch(_siputils_pcv_status) {
 		case PCV_GENERATED:
-			LM_WARN("P-Charging-Vector can't be changed after generation. Skipping command '%.*s'!",
-				STR_FMT(&flag_str));
+			LM_WARN("P-Charging-Vector can't be changed after generation. "
+							"Skipping command '%.*s'!",
+							STR_FMT(&flag_str));
 			return PCV_NOP;
 		case PCV_DELETED:
 			/* be consistent with the return value in this case */
-			if (remove_pcv)
+			if(remove_pcv)
 				return PCV_NOP;
 		default:
 			break;
@@ -427,8 +435,9 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 	 * or when it was broken anyway
 	 */
 	if((_siputils_pcv_status == PCV_PARSED && (replace_pcv || remove_pcv))
-		|| _siputils_pcv_status == PCV_ICID_MISSING) {
-		i = sip_remove_charging_vector(msg, _siputils_pcv_hf_pcv, &deleted_pcv_lump);
+					|| _siputils_pcv_status == PCV_ICID_MISSING) {
+		i = sip_remove_charging_vector(
+						msg, _siputils_pcv_hf_pcv, &deleted_pcv_lump);
 		if(i <= 0)
 			return (i == 0) ? -1 : i;
 		sip_initialize_pcv_buffers();
@@ -455,8 +464,10 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 
 		sip_generate_charging_vector(pcv_value, sizeof(pcv_value));
 
-		body_len = snprintf(pcv_body, PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN,
-				"icid-value=%.*s;icid-generated-at=", (int)sizeof(pcv_value), pcv_value);
+		body_len = snprintf(pcv_body,
+						PCV_BUF_SIZE - P_CHARGING_VECTOR_PREFIX_LEN,
+						"icid-value=%.*s;icid-generated-at=", (int)sizeof(pcv_value),
+						pcv_value);
 		generated_pcv.len = body_len + P_CHARGING_VECTOR_PREFIX_LEN;
 
 		/* if it was generated, we need to send it out as a header */
@@ -471,9 +482,10 @@ int sip_handle_pcv(struct sip_msg *msg, char *flags, char *str2)
 
 		/* if generated and added, copy buffer and reparse it */
 		sip_initialize_pcv_buffers();
-		_siputils_pcv.len =  body_len - CRLF_LEN;
+		_siputils_pcv.len = body_len - CRLF_LEN;
 		memcpy(_siputils_pcv.s, pcv_body, _siputils_pcv.len);
-		if (sip_parse_charging_vector(_siputils_pcv_buf, sizeof(_siputils_pcv_buf))) {
+		if (sip_parse_charging_vector(
+							_siputils_pcv_buf, sizeof(_siputils_pcv_buf))) {
 			action = (_siputils_pcv_status == PCV_DELETED) 	? PCV_REPLACED : PCV_GENERATED;
 			_siputils_pcv_status = PCV_GENERATED;
 		}
@@ -498,7 +510,8 @@ int pv_get_charging_vector(
 		LM_DBG("Parsed charging vector for pseudo-var, current state is %s\n",
 				sstatus[_siputils_pcv_status]);
 	} else {
-		LM_DBG("Charging vector is in state %s for pseudo-var, no parsing needed\n",
+		LM_DBG("Charging vector is in state %s for pseudo-var, no parsing "
+					"needed\n",
 				sstatus[_siputils_pcv_status]);
 	}
 
@@ -526,9 +539,8 @@ int pv_get_charging_vector(
 
 	if(pcv_pv.len > 0)
 		return pv_get_strval(msg, param, res, &pcv_pv);
-	else
-		if (param->pvn.u.isname.name.n == PCV_PARAM_ID
-			|| param->pvn.u.isname.name.n <= PCV_PARAM_ALL)
+	else if(param->pvn.u.isname.name.n == PCV_PARAM_ID
+					|| param->pvn.u.isname.name.n <= PCV_PARAM_ALL)
 		LM_WARN("No value for pseudo-var $pcv but status was %s.\n",
 				sstatus[_siputils_pcv_status]);
 
